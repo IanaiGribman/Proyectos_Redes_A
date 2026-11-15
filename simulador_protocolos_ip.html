@@ -6,195 +6,201 @@
 <title>Simulador de protocolos complementarios a IP: ARP, RARP, DHCP e ICMP</title>
 <style>
   :root {
-    --bg:#f3f6fb; --surface:#fff; --surface-2:#f8fafc; --text:#172033; --muted:#64748b; --line:#dbe3ef;
-    --primary:#3157d5; --primary-dark:#2443ad; --accent:#0f9d85; --danger:#c24141; --warning:#9a6700;
-    --shadow:0 8px 25px rgba(20,35,70,.07); --radius:16px;
-    --k-arp:#8b5cf6; --k-rarp:#d946ef; --k-ip:#3157d5; --k-icmp:#e08a00; --k-icmperr:#c24141; --k-dhcp:#0f9d85; --k-think:#64748b;
-    --kc:#3157d5;
+    --bg:#fafafb; --surface:#fff; --text:#1f2430; --muted:#868d9c; --line:#ebedf2; --line-2:#dfe2ea;
+    --accent:#3b5bdb; --accent-soft:#eef1fe; --ok:#16866f; --warn:#a56a00; --danger:#c0392b;
+    --k-arp:#7a5ad8; --k-rarp:#c040b0; --k-ip:#3b5bdb; --k-icmp:#d98200; --k-icmperr:#c0392b; --k-dhcp:#16866f; --k-think:#868d9c;
+    --kc:#3b5bdb; --radius:14px;
   }
   * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
-  button, input, select { font:inherit; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing:antialiased; }
+  button, input, select { font:inherit; color:inherit; }
   button { cursor:pointer; }
-  code { font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:.9em; background:#eef2ff; color:#27389a; padding:1px 5px; border-radius:5px; }
-  .hero { background:linear-gradient(120deg,#172554,#3157d5); color:#fff; padding:28px max(22px, calc((100% - 1240px)/2)); }
-  .hero h1 { margin:0 0 5px; font-size:clamp(24px,3vw,34px); letter-spacing:-.04em; }
-  .hero p { margin:0; color:#dbeafe; max-width:820px; }
-  .container { max-width:1240px; padding:22px; margin:auto; }
-  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 18px; }
-  .tab { border:1px solid var(--line); background:#fff; color:#475569; border-radius:999px; padding:9px 16px; font-weight:650; }
-  .tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
-  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; min-width:0; }
-  .card + .card, .grid2 + .card, .card + .grid2 { margin-top:16px; }
-  .grid2 { display:grid; grid-template-columns:minmax(320px,1.25fr) minmax(300px,1fr); gap:16px; align-items:start; margin-top:16px; }
-  h2 { font-size:19px; margin:0 0 12px; letter-spacing:-.02em; }
-  h3 { font-size:15px; margin:14px 0 8px; }
+  code { font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:.88em; background:#f1f3f8; color:#2c3a8c; padding:1px 6px; border-radius:5px; }
   .muted { color:var(--muted); } .small { font-size:12px; }
-  .section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  .top { padding:34px 0 6px; }
+  .wrap, .container { max-width:1040px; margin:0 auto; padding:0 24px; }
+  .top h1 { margin:0; font-size:clamp(22px,3vw,28px); font-weight:650; letter-spacing:-.03em; }
+  .top p { margin:4px 0 0; color:var(--muted); }
+  .container { padding-bottom:60px; }
+  .tabs { display:flex; gap:22px; margin:22px 0 26px; border-bottom:1px solid var(--line); overflow-x:auto; white-space:nowrap; }
+  .tab { border:0; background:none; padding:9px 0 11px; color:var(--muted); font-weight:550; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tab:hover { color:var(--text); }
+  .tab.active { color:var(--text); border-bottom-color:var(--accent); }
+  h2 { font-size:20px; font-weight:650; margin:0 0 6px; letter-spacing:-.02em; }
+  h3 { font-size:12px; margin:20px 0 8px; color:var(--muted); font-weight:650; text-transform:uppercase; letter-spacing:.06em; }
+  .intro p { margin:0; max-width:70ch; font-size:14.5px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:20px 22px; min-width:0; }
+  .block { margin-top:18px; }
   /* formulario */
-  .form { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-top:10px; }
-  .field { display:flex; flex-direction:column; gap:4px; min-width:150px; }
-  .field.check { flex-direction:row; align-items:center; gap:8px; min-width:0; padding-bottom:9px; }
-  label { color:#475569; font-size:12px; font-weight:700; }
-  input[type=text], input[type=number], select { border:1px solid #cbd5e1; border-radius:9px; padding:8px 10px; background:#fff; color:var(--text); min-width:0; }
-  input:focus, select:focus { outline:3px solid rgba(49,87,213,.14); border-color:var(--primary); }
-  .btn { border:0; border-radius:9px; padding:9px 14px; color:#fff; background:var(--primary); font-weight:700; transition:.15s; }
-  .btn:hover { background:var(--primary-dark); }
-  .btn.secondary { color:#334155; background:#e9eef7; } .btn.secondary:hover { background:#dce5f2; }
-  .btn.ghost { color:var(--primary); background:#eef2ff; } .btn.ghost:hover { background:#e0e7ff; }
-  .btn:disabled { opacity:.45; cursor:not-allowed; }
-  .chips { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; align-items:center; }
-  .chip { border:1px solid var(--line); background:#fff; color:#475569; border-radius:8px; padding:5px 10px; font-size:12px; font-weight:700; }
-  .chip:hover { background:#f1f5f9; }
-  details { border:1px solid var(--line); border-radius:11px; padding:9px 13px; background:var(--surface-2); margin-top:12px; }
-  details summary { cursor:pointer; font-weight:700; color:#334155; }
-  details p, details ul { margin:8px 0 0; } details ul { padding-left:20px; }
-  .notice { padding:10px 12px; border-radius:10px; background:#eff6ff; color:#1e40af; font-size:13px; }
-  .notice.warn { background:#fff7e6; color:#8a5a00; }
+  .form { display:flex; flex-wrap:wrap; gap:14px; align-items:flex-end; margin-top:18px; }
+  .field { display:flex; flex-direction:column; gap:5px; min-width:150px; }
+  .field.check { flex-direction:row; align-items:center; gap:8px; min-width:0; padding-bottom:9px; font-size:13px; color:var(--muted); font-weight:500; }
+  label { color:var(--muted); font-size:12px; font-weight:600; }
+  input[type=text], input[type=number], select { border:1px solid var(--line-2); border-radius:9px; padding:8px 11px; background:#fff; min-width:0; }
+  input[type=checkbox] { accent-color:var(--accent); }
+  input:focus, select:focus, button:focus-visible { outline:3px solid rgba(59,91,219,.15); border-color:var(--accent); }
+  .btn { border:1px solid transparent; border-radius:9px; padding:8px 16px; color:#fff; background:var(--accent); font-weight:600; transition:.15s; }
+  .btn:hover { background:#2f49b8; }
+  .btn.secondary, .btn.ghost { color:var(--text); background:#fff; border-color:var(--line-2); padding:8px 12px; }
+  .btn.secondary:hover, .btn.ghost:hover { background:#f4f5f9; }
+  .btn:disabled { opacity:.35; cursor:not-allowed; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; align-items:center; }
+  .chip { border:1px solid var(--line-2); background:#fff; color:#4a5263; border-radius:999px; padding:3px 11px; font-size:12px; font-weight:550; }
+  .chip:hover { background:var(--accent-soft); border-color:#c9d3fb; color:var(--accent); }
+  /* secciones plegables */
+  details.quiet { border-top:1px solid var(--line); padding:0; margin-top:0; background:none; border-radius:0; }
+  details.quiet:last-of-type { border-bottom:1px solid var(--line); }
+  details.quiet > summary { list-style:none; cursor:pointer; padding:14px 2px; color:#4a5263; font-weight:600; font-size:14px; display:flex; align-items:center; gap:9px; }
+  details.quiet > summary::-webkit-details-marker { display:none; }
+  details.quiet > summary::before { content:"›"; display:inline-block; transition:transform .15s; color:var(--muted); font-size:18px; line-height:1; }
+  details.quiet[open] > summary::before { transform:rotate(90deg); }
+  details.quiet > .inner { padding:0 2px 18px; }
+  details.quiet p, details.quiet ul { margin:8px 0; } details.quiet ul { padding-left:20px; }
+  details.more { margin-top:8px; }
+  details.more > summary { cursor:pointer; color:var(--accent); font-size:13px; font-weight:600; list-style:none; }
+  details.more > summary::-webkit-details-marker { display:none; }
+  details.more > summary::after { content:" ▾"; font-size:11px; }
+  details.more[open] > summary::after { content:" ▴"; }
+  details.hdr { margin-top:14px; }
+  details.hdr > summary { cursor:pointer; color:var(--muted); font-size:13px; font-weight:600; }
+  .notice { padding:11px 14px; border-radius:10px; background:var(--accent-soft); color:#2c3a8c; font-size:13.5px; }
+  .notice.warn { background:#fff8e8; color:#7a5200; }
   /* topología */
-  .topo-wrap { border:1px solid var(--line); background:linear-gradient(#fff,#fbfdff); border-radius:12px; overflow:hidden; }
+  .topo-wrap { border-radius:10px; overflow:hidden; }
   #topo { display:block; width:100%; height:auto; user-select:none; }
-  .bus { stroke:#cbd5e1; stroke-width:8; stroke-linecap:round; transition:stroke .2s; }
+  .bus { stroke:#e2e5ec; stroke-width:7; stroke-linecap:round; transition:stroke .2s; }
   .bus.hot { stroke:var(--kc); }
-  .stem { stroke:#cbd5e1; stroke-width:3; }
-  .lan-label { font-size:12px; font-weight:700; fill:#64748b; }
-  .if-label { font-size:11px; fill:#475569; font-family:ui-monospace,Consolas,monospace; }
-  .node .box { fill:#fff; stroke:#94a3b8; stroke-width:2; transition:.2s; }
-  .node .rt { fill:#eef2ff; stroke:#3157d5; stroke-width:2.5; transition:.2s; }
-  .node .nm { font-weight:800; font-size:15px; text-anchor:middle; fill:#172033; }
-  .node .ipt { font-size:11.5px; text-anchor:middle; fill:#475569; font-family:ui-monospace,Consolas,monospace; }
-  .node.from .box, .node.from .rt { stroke:var(--kc); stroke-width:4; }
-  .node.ok .box, .node.ok .rt { stroke:#0f9d85; fill:#ecfdf5; stroke-width:4; }
-  .node.upd .box, .node.upd .rt, .node.think .box, .node.think .rt { stroke:#d97706; fill:#fffbeb; stroke-width:4; }
-  .node.no { opacity:.5; }
-  .badge { font-size:12px; font-weight:800; text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:4px; stroke-linejoin:round; }
-  .badge.ok { fill:#087b68; } .badge.no { fill:#64748b; } .badge.think { fill:#946200; } .badge.from { fill:var(--kc); }
-  .token rect { fill:var(--kc); } .token text { fill:#fff; font-size:11px; font-weight:800; text-anchor:middle; }
-  .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:12px; }
-  .controls input[type=range] { flex:1; min-width:140px; }
-  .stepno { font-weight:800; min-width:92px; text-align:center; }
+  .stem { stroke:#e2e5ec; stroke-width:2; }
+  .lan-label { font-size:11.5px; font-weight:600; fill:#9aa1b0; }
+  .if-label { font-size:10.5px; fill:#8a91a0; font-family:ui-monospace,Consolas,monospace; }
+  .node .box { fill:#fff; stroke:#cfd4df; stroke-width:1.5; transition:.2s; }
+  .node .rt { fill:#fff; stroke:#3b5bdb; stroke-width:2; transition:.2s; }
+  .node .nm { font-weight:700; font-size:14px; text-anchor:middle; fill:#1f2430; }
+  .node .ipt { font-size:11px; text-anchor:middle; fill:#8a91a0; font-family:ui-monospace,Consolas,monospace; }
+  .node.from .box, .node.from .rt { stroke:var(--kc); stroke-width:3; }
+  .node.ok .box, .node.ok .rt { stroke:var(--ok); fill:#f1faf7; stroke-width:3; }
+  .node.upd .box, .node.upd .rt, .node.think .box, .node.think .rt { stroke:#d98200; fill:#fffaf0; stroke-width:3; }
+  .node.no { opacity:.45; }
+  .badge { font-size:11.5px; font-weight:650; text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:4px; stroke-linejoin:round; }
+  .badge.ok { fill:var(--ok); } .badge.no { fill:var(--muted); } .badge.think { fill:var(--warn); } .badge.from { fill:var(--kc); }
+  .token rect { fill:var(--kc); } .token text { fill:#fff; font-size:10.5px; font-weight:700; text-anchor:middle; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:14px; }
+  .controls .btn { min-width:38px; }
+  .controls input[type=range] { flex:1; min-width:140px; accent-color:var(--accent); }
+  .controls select { padding:6px 8px; font-size:13px; }
+  .stepno { font-weight:600; color:var(--muted); font-size:13px; min-width:88px; text-align:center; }
+  .predrow { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-top:12px; font-size:13px; color:var(--muted); }
+  .predrow label { display:flex; gap:7px; align-items:center; font-weight:500; font-size:13px; }
+  .score { font-weight:600; color:var(--accent); }
   /* detalle del paso */
-  .tag { display:inline-block; color:#fff; background:var(--k-think); border-radius:999px; padding:1px 9px; font-size:11px; font-weight:800; vertical-align:middle; }
-  .tag.arp { background:var(--k-arp); } .tag.rarp { background:var(--k-rarp); } .tag.ip { background:var(--k-ip); }
-  .tag.icmp { background:var(--k-icmp); } .tag.icmperr { background:var(--k-icmperr); } .tag.dhcp { background:var(--k-dhcp); }
-  .step-title { font-size:17px; font-weight:800; margin:0 0 8px; letter-spacing:-.01em; }
-  .step-body p { margin:6px 0; }
-  .calc { background:#f8fafc; border:1px solid var(--line); border-radius:9px; padding:7px 10px; }
-  .learn { margin:8px 0 0; padding:8px 11px; border-radius:9px; background:#ecfdf5; color:#065f46; font-size:13px; }
-  .layer { border:1px solid var(--line); border-radius:11px; margin-top:9px; overflow:hidden; }
-  .layer > .lh { background:#eef2ff; color:#27389a; font-weight:800; font-size:12px; padding:5px 10px; }
-  .fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
-  .fld { padding:6px 10px; border-top:1px solid #eef1f6; border-right:1px solid #eef1f6; min-width:0; overflow-wrap:anywhere; }
-  .fld .l { display:block; font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
-  .fld .v { font-family:ui-monospace,Consolas,monospace; font-size:12.5px; font-weight:600; }
-  .fld .v small { font-family:inherit; font-weight:700; color:#27389a; background:#eef2ff; border-radius:5px; padding:0 5px; margin-left:3px; }
-  .fld.changed { background:#fff7e0; } .fld.changed .l::after { content:" · cambió"; color:#b45309; }
-  .mcq { border:2px dashed #c7d2fe; border-radius:12px; padding:11px 13px; background:#f8faff; margin-top:10px; }
-  .mcq .opts { display:grid; gap:7px; margin-top:8px; }
-  .mcq .opt { text-align:left; border:1px solid #cbd5e1; background:#fff; border-radius:9px; padding:8px 11px; font-family:ui-monospace,Consolas,monospace; font-size:13px; font-weight:600; }
-  .mcq .opt:hover { background:#eef2ff; }
-  .mcq .opt.right { background:#dcfce7; border-color:#16a34a; } .mcq .opt.wrong { background:#fee2e2; border-color:#dc2626; }
-  .score { font-weight:800; color:#27389a; }
+  .tag { display:inline-flex; align-items:center; color:var(--k-think); font-size:12px; font-weight:650; letter-spacing:.02em; }
+  .tag::before { content:""; width:7px; height:7px; border-radius:50%; background:currentColor; margin-right:6px; }
+  .tag.arp { color:var(--k-arp); } .tag.rarp { color:var(--k-rarp); } .tag.ip { color:var(--k-ip); }
+  .tag.icmp { color:var(--k-icmp); } .tag.icmperr { color:var(--k-icmperr); } .tag.dhcp { color:var(--k-dhcp); }
+  .step-title { font-size:19px; font-weight:650; margin:8px 0 10px; letter-spacing:-.02em; text-transform:none; color:var(--text); line-height:1.35; }
+  .step-body { max-width:72ch; }
+  .step-body p { margin:8px 0; }
+  .calc { background:#f7f8fb; border-radius:9px; padding:8px 12px; }
+  .learn { margin:12px 0 0; padding:9px 13px; border-radius:9px; background:#f1faf7; color:#14614f; font-size:13px; }
+  .layer { border:1px solid var(--line); border-radius:10px; margin-top:9px; overflow:hidden; }
+  .layer > .lh { background:#f7f8fb; color:#4a5263; font-weight:650; font-size:12px; padding:6px 12px; }
+  .fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(160px,1fr)); }
+  .fld { padding:7px 12px; border-top:1px solid #f0f1f5; min-width:0; overflow-wrap:anywhere; }
+  .fld .l { display:block; font-size:10.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+  .fld .v { font-family:ui-monospace,Consolas,monospace; font-size:12.5px; font-weight:550; }
+  .fld .v small { font-family:inherit; font-weight:650; color:var(--accent); background:var(--accent-soft); border-radius:5px; padding:0 5px; margin-left:4px; }
+  .fld.changed { background:#fff8e8; } .fld.changed .l::after { content:" · cambió"; color:#b45309; }
+  .mcq { border:1px dashed #c9d3fb; border-radius:12px; padding:13px 15px; background:#fafbff; margin:12px 0; }
+  .mcq .opts { display:grid; gap:7px; margin-top:9px; }
+  .mcq .opt { text-align:left; border:1px solid var(--line-2); background:#fff; border-radius:9px; padding:8px 12px; font-family:ui-monospace,Consolas,monospace; font-size:13px; font-weight:550; }
+  .mcq .opt:hover:not(:disabled) { background:var(--accent-soft); }
+  .mcq .opt.right { background:#e8f7f1; border-color:var(--ok); } .mcq .opt.wrong { background:#fdecea; border-color:var(--danger); }
   /* lista de pasos */
-  .steplist { position:relative; max-height:300px; overflow:auto; display:flex; flex-direction:column; gap:5px; padding-right:3px; }
-  .si { display:flex; gap:8px; align-items:center; text-align:left; border:1px solid var(--line); background:#fff; border-radius:9px; padding:6px 9px; font-size:13px; }
-  .si:hover { background:#f8fafc; } .si.active { border-color:var(--primary); background:#eef2ff; font-weight:700; }
-  .si.future { opacity:.55; } .si .n { color:var(--muted); font-weight:800; min-width:20px; }
+  .steplist { position:relative; max-height:320px; overflow:auto; display:flex; flex-direction:column; gap:2px; }
+  .si { display:flex; gap:10px; align-items:center; text-align:left; border:0; background:none; border-radius:8px; padding:6px 9px; font-size:13px; }
+  .si:hover { background:#f4f5f9; } .si.active { background:var(--accent-soft); font-weight:600; }
+  .si.future { opacity:.5; } .si .n { color:var(--muted); font-weight:600; min-width:20px; }
+  .si .tag { min-width:80px; }
   /* dispositivos */
-  .devs { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
-  .dev { border:1px solid var(--line); border-radius:11px; padding:9px 11px; background:#fff; font-size:12.5px; }
-  .dev.changed { border-color:#f59e0b; box-shadow:0 0 0 3px #fef3c7; }
-  .dev .dn { font-weight:800; font-size:14px; } .dev .dr { color:var(--muted); font-size:11.5px; }
-  .dev .mono { font-family:ui-monospace,Consolas,monospace; font-size:11.5px; }
-  .dev .ifline { margin-top:4px; }
+  .devs { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:10px; }
+  .dev { border:1px solid var(--line); border-radius:11px; padding:10px 12px; background:#fff; font-size:12.5px; }
+  .dev.changed { border-color:#f0c36d; background:#fffdf7; }
+  .dev .dn { font-weight:700; font-size:14px; } .dev .dr { color:var(--muted); font-size:11.5px; font-weight:500; }
+  .dev .ifline { margin-top:5px; }
+  .mono { font-family:ui-monospace,Consolas,monospace; font-size:11.5px; }
   table { border-collapse:collapse; width:100%; font-size:12.5px; }
-  th, td { border:1px solid var(--line); padding:5px 8px; text-align:left; } th { background:#f1f5f9; }
+  th, td { border-bottom:1px solid var(--line); padding:6px 8px; text-align:left; }
+  th { color:var(--muted); font-weight:600; font-size:11.5px; }
   .tw { overflow:auto; }
-  td.m, .mono { font-family:ui-monospace,Consolas,monospace; font-size:12px; }
-  tr.cur td { background:#eef2ff; font-weight:700; } tr.fut td { opacity:.45; }
-  tr.chosen td { background:#ecfdf5; font-weight:700; }
+  td.m { font-family:ui-monospace,Consolas,monospace; font-size:12px; }
+  tr.cur td { background:var(--accent-soft); font-weight:600; } tr.fut td { opacity:.4; }
+  tr.chosen td { background:#f1faf7; font-weight:600; }
   table.mini { margin:6px 0; } table.mini td, table.mini th { padding:3px 7px; }
-  .arpt { margin-top:6px; } .arpt td.new { background:#dcfce7; font-weight:700; }
+  .arpt { margin-top:7px; } .arpt td.new { background:#e8f7f1; font-weight:650; }
   .enc { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
-  .encrow { display:flex; align-items:stretch; font-size:12px; font-weight:700; flex-wrap:wrap; }
-  .encrow span { padding:8px 12px; border:2px solid #fff; color:#fff; text-align:center; }
-  .encrow .eth { background:#475569; } .encrow .ip { background:#3157d5; } .encrow .udp { background:#0f9d85; }
-  .encrow .dhcp { background:#14b8a6; } .encrow .icmp { background:#e08a00; } .encrow .arp { background:#8b5cf6; } .encrow .rarp { background:#d946ef; }
-  .encrow .lbl { background:transparent; color:#475569; border:0; min-width:150px; text-align:left; align-self:center; }
-  @media (max-width:900px) { .grid2 { grid-template-columns:1fr; } }
+  .encrow { display:flex; align-items:stretch; font-size:12px; font-weight:600; flex-wrap:wrap; gap:2px; }
+  .encrow span { padding:8px 12px; color:#fff; text-align:center; border-radius:5px; }
+  .encrow .eth { background:#6b7385; } .encrow .ip { background:#3b5bdb; } .encrow .udp { background:#16866f; }
+  .encrow .dhcp { background:#3aa896; } .encrow .icmp { background:#d98200; } .encrow .arp { background:#7a5ad8; } .encrow .rarp { background:#c040b0; }
+  .encrow .lbl { background:transparent; color:var(--muted); min-width:150px; text-align:left; align-self:center; }
+  #view-sum .card { margin-bottom:16px; }
+  #view-sum details { border:1px solid var(--line); border-radius:10px; padding:9px 14px; margin-top:8px; }
+  #view-sum details summary { cursor:pointer; font-weight:600; }
   @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
 </style>
 </head>
 <body>
-<header class="hero">
-  <h1>Protocolos complementarios a IP: ARP, RARP, DHCP e ICMP</h1>
-  <p>Seguí paso a paso cómo viaja un paquete entre routers y cómo hosts y routers descubren las direcciones MAC (y las IP) necesarias para armar cada trama. Una sola página, sin dependencias: se puede guardar y abrir sin conexión.</p>
+<header class="top">
+  <div class="wrap">
+    <h1>Protocolos complementarios a IP</h1>
+    <p>ARP, RARP, DHCP e ICMP: cómo un paquete encuentra su camino, trama a trama.</p>
+  </div>
 </header>
 <main class="container">
   <nav class="tabs" id="tabs" aria-label="Escenarios"></nav>
 
   <section id="view-sim">
-    <div class="card">
-      <div class="section-head"><h2 id="sc-title" style="margin:0"></h2></div>
-      <div id="sc-intro" class="muted"></div>
-      <div class="form" id="form"></div>
-      <div class="chips" id="presets"></div>
-      <div class="chips" style="margin-top:10px">
-        <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="clr" checked> Vaciar las cachés ARP antes de cada simulación</label>
-        <button class="btn ghost" id="btn-flush">Vaciar cachés ahora</button>
-        <span class="muted small" id="cache-count"></span>
-      </div>
-      <details id="theory"><summary>Teoría de este escenario</summary><div id="theory-body"></div></details>
-    </div>
+    <div class="intro"><h2 id="sc-title"></h2><p id="sc-intro" class="muted"></p></div>
+    <div class="form" id="form"></div>
+    <div class="chips" id="presets"></div>
 
-    <div class="card">
-      <div class="section-head">
-        <h2 style="margin:0">Red de práctica</h2>
-        <span class="muted small">Tres redes Ethernet conmutadas unidas por dos routers · el color del enlace indica el protocolo en juego</span>
-      </div>
-      <div class="topo-wrap"><svg id="topo" viewBox="0 0 1000 310" role="img" aria-label="Topología de la red"></svg></div>
+    <div class="card block">
+      <div class="topo-wrap"><svg id="topo" viewBox="0 36 1000 270" role="img" aria-label="Topología de la red"></svg></div>
       <div class="controls">
         <button class="btn secondary" id="b-first" title="Primer paso">⏮</button>
         <button class="btn secondary" id="b-prev" title="Anterior (←)">◀</button>
         <button class="btn" id="b-play">▶ Reproducir</button>
-        <button class="btn secondary" id="b-next" title="Siguiente (→)">▶▶</button>
+        <button class="btn secondary" id="b-next" title="Siguiente (→)">▶</button>
         <button class="btn secondary" id="b-last" title="Último paso">⏭</button>
         <span class="stepno" id="stepno"></span>
         <input type="range" id="slider" min="0" max="0" value="0" aria-label="Paso">
         <select id="speed" aria-label="Velocidad"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
       </div>
-      <div class="chips" style="margin-top:10px">
-        <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="pred"> Modo predicción: adiviná la MAC destino de cada trama antes de verla</label>
+      <div class="predrow">
+        <label><input type="checkbox" id="pred"> Modo predicción: adiviná la MAC destino antes de verla</label>
         <span class="score" id="score"></span>
       </div>
     </div>
 
-    <div class="grid2">
-      <div class="card">
-        <div class="section-head"><h2 style="margin:0">Qué ocurre en este paso</h2></div>
-        <div id="detail"></div>
-      </div>
-      <div>
-        <div class="card">
-          <div class="section-head"><h2 style="margin:0">Secuencia completa</h2><span class="muted small">Click para saltar</span></div>
-          <div class="steplist" id="steplist"></div>
-        </div>
-        <div class="card">
-          <div class="section-head"><h2 style="margin:0">Tramas que transportaron el datagrama</h2></div>
-          <div class="tw" id="hops"></div>
-        </div>
-      </div>
-    </div>
+    <div class="card block"><div id="detail"></div></div>
 
-    <div class="card">
-      <div class="section-head"><h2 style="margin:0">Estado de los dispositivos</h2><span class="muted small">Direcciones y caché ARP en el paso actual · en ámbar lo que cambió</span></div>
-      <div class="devs" id="devs"></div>
+    <div class="block">
+      <details class="quiet" id="theory"><summary>Teoría de este escenario</summary><div class="inner" id="theory-body"></div></details>
+      <details class="quiet"><summary>Secuencia completa</summary><div class="inner"><div class="steplist" id="steplist"></div></div></details>
+      <details class="quiet"><summary>Tramas que transportaron el datagrama</summary><div class="inner tw" id="hops"></div></details>
+      <details class="quiet"><summary>Estado de los dispositivos (direcciones y cachés ARP)</summary><div class="inner"><div class="devs" id="devs"></div></div></details>
+      <details class="quiet"><summary>Opciones de caché ARP</summary><div class="inner">
+        <div class="chips" style="margin-top:0">
+          <label style="display:flex;gap:7px;align-items:center;font-weight:500;font-size:13px"><input type="checkbox" id="clr" checked> Vaciar las cachés antes de cada simulación</label>
+          <button class="btn ghost" id="btn-flush">Vaciar ahora</button>
+          <span class="muted small" id="cache-count"></span>
+        </div>
+      </div></details>
     </div>
   </section>
 
   <section id="view-sum" hidden></section>
 </main>
-
 <script>
 'use strict';
 /* =====================================================================
@@ -691,7 +697,7 @@ const KIND = { arp:'ARP', rarp:'RARP', ip:'IP', icmp:'ICMP', icmperr:'ICMP / err
 const KCOL = { arp:'#8b5cf6', rarp:'#d946ef', ip:'#3157d5', icmp:'#e08a00', icmperr:'#c24141', dhcp:'#0f9d85', think:'#64748b' };
 const DISP = { S:'S · srv' };
 const NSV = 'http://www.w3.org/2000/svg';
-const S = { tab:'route', cfg:{}, run:null, idx:0, playing:false, timer:null, speed:1, pred:{ on:false, ans:{} }, runId:0, raf:0 };
+const S = { tab:'route', cfg:{}, run:null, idx:0, playing:false, timer:null, speed:1, pred:{ on:false, ans:{} }, runId:0, raf:0, open:{ more:false, hdr:false } };
 TABS.forEach(k => S.cfg[k] = Object.fromEntries(SC[k].fields.map(f => [f.id, f.def])));
 
 function buildTopo() {
@@ -800,8 +806,11 @@ function renderDetail() {
   h += `<h3 class="step-title">${hide ? `Una trama sale de ${lbl(W, st.from.id, st.from.i)}…` : st.title}</h3>`;
   if (q) h += `<div class="mcq"><b>¿Cuál es la MAC destino de esta trama?</b><div class="opts">${q.options.map(o => `<button class="opt ${ans ? (o === q.correct ? 'right' : o === ans ? 'wrong' : '') : ''}" data-ans="${o}" ${ans ? 'disabled' : ''}>${o}${ans && macOwner(o) ? ' · ' + macOwner(o) : ''}</button>`).join('')}</div>${ans ? `<p style="margin:8px 0 0">${ans === q.correct ? '✔ Correcto.' : `✘ La correcta era <code>${q.correct}</code> (${macOwner(q.correct)}).`}</p>` : `<p class="muted small" style="margin:8px 0 0">Pista: mirá hacia dónde viaja la trama y la tabla de «Estado de los dispositivos».</p>`}</div>`;
   if (hide) h += `<p class="muted">Respondé para ver la explicación y las cabeceras completas.</p>`;
-  else h += `<div class="step-body">${st.html}</div>` + (st.learn && st.learn.length ? `<div class="learn">💾 ${st.learn.map(esc).join('<br>💾 ')}</div>` : '');
-  if (st.layers) h += `<h3>Contenido de la trama (de afuera hacia adentro)</h3>` + st.layers.map(L => layerHtml(L, hide)).join('');
+  else {
+    const cut = st.html.indexOf('</p>') + 4, first = st.html.slice(0, cut), rest = st.html.slice(cut).trim();
+    h += `<div class="step-body">${first}${rest ? `<details class="more" data-k="more" ${S.open.more ? 'open' : ''}><summary>Más detalle</summary>${rest}</details>` : ''}</div>` + (st.learn && st.learn.length ? `<div class="learn">💾 ${st.learn.map(esc).join('<br>💾 ')}</div>` : '');
+    if (st.layers) h += `<details class="hdr" data-k="hdr" ${S.open.hdr ? 'open' : ''}><summary>Ver cabeceras de la trama</summary>${st.layers.map(L => layerHtml(L, false)).join('')}</details>`;
+  }
   $('#detail').innerHTML = h;
 }
 function renderList() {
@@ -918,6 +927,7 @@ $('#slider').addEventListener('input', e => { stopPlay(); go(+e.target.value); }
 $('#speed').addEventListener('change', e => { S.speed = +e.target.value; });
 $('#pred').addEventListener('change', e => { S.pred.on = e.target.checked; renderStep(); });
 $('#steplist').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { stopPlay(); go(+b.dataset.i); } });
+$('#detail').addEventListener('toggle', e => { const k = e.target.dataset && e.target.dataset.k; if (k) S.open[k] = e.target.open; }, true);
 $('#detail').addEventListener('click', e => { const b = e.target.closest('[data-ans]'); if (!b) return; S.pred.ans[S.runId + ':' + S.idx] = b.dataset.ans; renderStep(); });
 document.addEventListener('keydown', e => {
   if (e.target.matches('input,select,textarea') || $('#view-sim').hidden || !S.run) return;
