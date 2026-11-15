@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Práctica IPv4 - Múltiples Módulos</title>
+  <title>Práctica IPv4 - Examen Avanzado (6 Preguntas)</title>
   
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
@@ -31,6 +31,14 @@
     @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
     .font-monospace { font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important; }
     .table-sm td, .table-sm th { padding: 0.3rem; }
+    
+    /* Estilos Examen */
+    .examen-box { border: 2px solid #dc3545; border-radius: 8px; padding: 24px; background: white; box-shadow: 0 4px 12px rgba(220,53,69,0.1); }
+    .examen-box h6 { font-size: 1.1rem; line-height: 1.5; }
+    .form-check-input:checked { background-color: #dc3545; border-color: #dc3545; }
+    .resultado-item { border-left: 4px solid #ccc; padding-left: 10px; margin-bottom: 10px; }
+    .resultado-ok { border-left-color: #198754; }
+    .resultado-err { border-left-color: #dc3545; }
   </style>
 </head>
 <body>
@@ -42,7 +50,7 @@
         <button class="nav-link active" id="tab1-tab" data-bs-toggle="tab" data-bs-target="#tab1" type="button" role="tab"><i class="fa fa-network-wired me-1"></i> Clasificador</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="tab2-tab" data-bs-toggle="tab" data-bs-target="#tab2" type="button" role="tab"><i class="fa fa-calculator me-1"></i> Calculadora Inversa</button>
+        <button class="nav-link" id="tab2-tab" data-bs-toggle="tab" data-bs-target="#tab2" type="button" role="tab"><i class="fa fa-calculator me-1"></i> Calculadora</button>
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3" type="button" role="tab"><i class="fa fa-exchange-alt me-1"></i> ¿Es Alcanzable?</button>
@@ -52,6 +60,12 @@
       </li>
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="tab5-tab" data-bs-toggle="tab" data-bs-target="#tab5" type="button" role="tab"><i class="fa fa-tags me-1"></i> Clases y Especiales</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab6-tab" data-bs-toggle="tab" data-bs-target="#tab6" type="button" role="tab"><i class="fa fa-list-ol me-1"></i> Listar Subredes</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link text-danger fw-bold" id="tab7-tab" data-bs-toggle="tab" data-bs-target="#tab7" type="button" role="tab"><i class="fa fa-graduation-cap me-1"></i> Examen Final</button>
       </li>
     </ul>
 
@@ -64,7 +78,6 @@
             <h5 class="mb-0">Clasificador de Subredes</h5>
           </div>
           <div class="card-body bg-light">
-            
             <div class="row g-2 mb-3 align-items-end bg-white p-3 rounded border shadow-sm mx-0">
               <div class="col-md-3">
                 <label class="form-label fw-bold small mb-1">Red Principal</label>
@@ -82,14 +95,11 @@
                 <button id="btn-reset-1" class="btn btn-primary btn-sm w-100 fw-bold">Generar Ejercicio</button>
               </div>
             </div>
-
             <p class="text-muted small mb-3">Arrastrá cada IP al contenedor de su red correspondiente. <br><small><i class="fa fa-lightbulb text-warning"></i> Tip: Doble clic en una IP para ver el cálculo binario.</small></p>
-            
             <div class="mb-4">
               <h6 class="text-secondary border-bottom pb-1">Pool de IPs</h6>
               <div id="m1-pool" class="d-flex flex-wrap gap-2 p-3 bg-white border rounded" style="min-height: 100px;"></div>
             </div>
-
             <h6 class="text-secondary border-bottom pb-1">Redes Destino</h6>
             <div id="m1-zonas" class="row g-3"></div>
           </div>
@@ -100,11 +110,10 @@
       <div class="tab-pane fade" id="tab2" role="tabpanel">
         <div class="card shadow-sm border-success">
           <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">Calculadora Inversa (Rango de Red)</h5>
+            <h5 class="mb-0">Calculadora Inversa</h5>
             <button id="btn-reset-2-random" class="btn btn-light btn-sm fw-bold"><i class="fa fa-random me-1"></i> Generar al Azar</button>
           </div>
           <div class="card-body bg-light">
-            
             <div class="row justify-content-center mb-3">
               <div class="col-md-8">
                 <label class="form-label fw-bold small mb-1">Ingresá una red (IP/Máscara):</label>
@@ -114,13 +123,10 @@
                 </div>
               </div>
             </div>
-
             <div class="alert alert-success font-monospace fs-5 text-center" id="m2-display-red" style="display:none;">
               Red a calcular: <strong id="m2-red"></strong>
             </div>
-
             <div id="m2-formulario" style="display:none;">
-              <p class="text-muted small">Calculá los datos de esta red y presioná "Verificar".</p>
               <div class="row g-3">
                 <div class="col-md-6">
                   <label class="form-label fw-bold">Dirección de Broadcast</label>
@@ -149,11 +155,10 @@
       <div class="tab-pane fade" id="tab3" role="tabpanel">
         <div class="card shadow-sm border-warning">
           <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">¿Es Alcanzable? (Ruteo Local)</h5>
+            <h5 class="mb-0">¿Es Alcanzable?</h5>
           </div>
           <div class="card-body bg-light text-center">
             <p class="text-muted small">¿Pueden estos dos hosts comunicarse directamente sin un router?</p>
-            
             <div class="row justify-content-center align-items-center mb-4">
               <div class="col-md-4">
                 <div class="card shadow-sm border-secondary">
@@ -163,9 +168,7 @@
                   </div>
                 </div>
               </div>
-              <div class="col-md-2 my-2">
-                <i class="fa fa-arrows-alt-h fa-2x text-muted"></i>
-              </div>
+              <div class="col-md-2 my-2"><i class="fa fa-arrows-alt-h fa-2x text-muted"></i></div>
               <div class="col-md-4">
                 <div class="card shadow-sm border-secondary">
                   <div class="card-body">
@@ -175,12 +178,10 @@
                 </div>
               </div>
             </div>
-
             <div id="m3-botones-respuesta" class="d-flex justify-content-center gap-3 mb-3">
               <button id="m3-btn-si" class="btn btn-outline-success btn-lg w-25 fw-bold">SÍ</button>
               <button id="m3-btn-no" class="btn btn-outline-danger btn-lg w-25 fw-bold">NO</button>
             </div>
-            
             <div id="m3-feedback" class="text-start bg-white p-3 border rounded d-none">
               <div id="m3-feedback-texto" class="font-monospace mb-3"></div>
             </div>
@@ -197,7 +198,6 @@
           </div>
           <div class="card-body bg-light">
             <div class="alert alert-info font-monospace fs-6 text-center" id="m4-enunciado"></div>
-            
             <div class="row justify-content-center">
               <div class="col-md-8">
                 <label class="form-label fw-bold" id="m4-label-input">Máscara de subred</label>
@@ -224,7 +224,6 @@
           </div>
           <div class="card-body bg-light text-center">
             <h2 class="font-monospace my-4" id="m5-ip"></h2>
-            
             <div class="row justify-content-center">
               <div class="col-md-8">
                 <p class="mb-1 fw-bold">¿Qué tipo de dirección es?</p>
@@ -238,6 +237,64 @@
               </div>
             </div>
             <div id="m5-feedback" class="fs-5 fw-bold d-none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MÓDULO 6: LISTAR SUBREDES ================= -->
+      <div class="tab-pane fade" id="tab6" role="tabpanel">
+        <div class="card shadow-sm border-secondary">
+          <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Listar Subredes</h5>
+            <button id="btn-reset-6" class="btn btn-light btn-sm fw-bold"><i class="fa fa-refresh me-1"></i> Siguiente Caso</button>
+          </div>
+          <div class="card-body bg-light">
+            <div class="alert alert-secondary font-monospace fs-6 text-center" id="m6-enunciado"></div>
+            <div class="row justify-content-center">
+              <div class="col-md-8">
+                <div id="m6-inputs-container" class="mb-3"></div>
+                <button id="m6-check" class="btn btn-secondary w-100 fw-bold">Verificar Subredes</button>
+              </div>
+            </div>
+            <div id="m6-feedback" class="mt-3 text-center d-none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MÓDULO 7: EXAMEN FINAL ================= -->
+      <div class="tab-pane fade" id="tab7" role="tabpanel">
+        <div class="card shadow border-danger">
+          <div class="card-header bg-danger text-white text-center">
+            <h5 class="mb-0"><i class="fa fa-graduation-cap me-2"></i>Examen de Integración Final</h5>
+          </div>
+          <div class="card-body p-4">
+            <div id="ex-inicio" class="text-center">
+              <h4 class="mb-3">Prueba Avanzada de IPv4</h4>
+              <p>Este examen consta de 6 preguntas que combinan todos los conceptos.<br>
+              Al finalizar, verás tu puntaje y en qué te equivocaste.</p>
+              <button id="btn-ex-iniciar" class="btn btn-danger btn-lg px-5 fw-bold">Comenzar Examen</button>
+            </div>
+
+            <div id="ex-juego" style="display:none;">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="mb-0 text-danger">Pregunta <span id="ex-num">1</span> de 6</h5>
+                <span class="badge bg-secondary fs-6" id="ex-modulo">Módulo</span>
+              </div>
+              <div class="examen-box mb-3">
+                <div id="ex-contenido"></div>
+              </div>
+              <button id="ex-btn-siguiente" class="btn btn-danger w-100 fw-bold d-none">Siguiente Pregunta</button>
+            </div>
+
+            <div id="ex-resultado" style="display:none;" class="text-center">
+              <h2 class="mb-3">Resultado Final</h2>
+              <div class="display-1 fw-bold mb-1" id="ex-puntaje">0 / 6</div>
+              <div id="ex-mensaje" class="fs-5 mb-4 fw-bold"></div>
+              
+              <div id="ex-revision" class="text-start mb-4"></div>
+              
+              <button id="btn-ex-reiniciar" class="btn btn-outline-danger fw-bold">Volver a intentar</button>
+            </div>
           </div>
         </div>
       </div>
@@ -302,6 +359,41 @@
       return cidr;
     };
 
+    const esIPValida = (ipStr) => {
+      const partes = ipStr.split('.');
+      if(partes.length !== 4) return false;
+      return partes.every(p => {
+        const num = parseInt(p, 10);
+        return !isNaN(num) && num >= 0 && num <= 255 && String(num) === p;
+      });
+    };
+
+    const esPrivada = (ipStr) => {
+      if(!esIPValida(ipStr)) return false;
+      const ipInt = ipToInt(ipStr);
+      const o1 = ipInt >>> 24;
+      const o2 = (ipInt >>> 16) & 255;
+      
+      if (o1 === 10) return true; 
+      if (o1 === 172 && o2 >= 16 && o2 <= 31) return true; 
+      if (o1 === 192 && o2 === 168) return true; 
+      
+      return false;
+    };
+
+    const esPublicaValida = (ipStr) => {
+      if(!esIPValida(ipStr) || esPrivada(ipStr)) return false;
+      const ipInt = ipToInt(ipStr);
+      const o1 = ipInt >>> 24;
+      const o2 = (ipInt >>> 16) & 255;
+      
+      if (o1 === 127) return false; 
+      if (o1 === 169 && o2 === 254) return false; 
+      if (o1 >= 224 && o1 <= 239) return false; 
+      
+      return true;
+    };
+
     const elegirAleatorioDistinto = (lista, elementoActual) => {
       if (lista.length <= 1) return lista[0];
       let nuevo;
@@ -333,6 +425,89 @@
       container.appendChild(toastEl);
       setTimeout(() => { if(toastEl.parentNode) toastEl.remove(); }, duracion);
     };
+
+    // ==========================================
+    // GENERADORES BASE
+    // ==========================================
+    const generarRandomM2 = () => {
+      const masks = [24, 25, 26, 27, 28, 29];
+      const mask = masks[Math.floor(Math.random() * masks.length)];
+      const ipInt = ipToInt(`192.168.${Math.floor(Math.random()*10)}.0`);
+      const netInt = (ipInt & getMaskInt(mask)) >>> 0;
+      const blockSize = Math.pow(2, 32 - mask);
+      return {
+        redStr: `${intToIp(netInt)}/${mask}`,
+        broadcast: intToIp(netInt + blockSize - 1),
+        min: intToIp(netInt + 1),
+        max: intToIp(netInt + blockSize - 2),
+        hosts: blockSize - 2
+      };
+    };
+
+    const generarRandomM3 = () => {
+      const esAlcanzable = Math.random() > 0.5;
+      const mask = [24, 25, 26][Math.floor(Math.random()*3)];
+      const baseRedA = Math.floor(Math.random() * 50);
+      const netBaseAInt = ipToInt(`192.168.${baseRedA}.0`);
+      const ipAInt = netBaseAInt + Math.floor(Math.random() * 200) + 1; 
+      let ipBInt, redBaseB = baseRedA;
+      if (esAlcanzable) {
+        ipBInt = netBaseAInt + Math.floor(Math.random() * 200) + 1;
+      } else {
+        do { redBaseB = Math.floor(Math.random() * 50); } while (redBaseB === baseRedA);
+        const netBaseBInt = ipToInt(`192.168.${redBaseB}.0`);
+        ipBInt = netBaseBInt + Math.floor(Math.random() * 200) + 1;
+      }
+      return {
+        ipA: `${intToIp(ipAInt)}/${mask}`,
+        ipB: `${intToIp(ipBInt)}/${mask}`,
+        redA: (ipAInt & getMaskInt(mask)) >>> 0,
+        redB: (ipBInt & getMaskInt(mask)) >>> 0,
+        mask: mask
+      };
+    };
+
+    const generarRandomM4 = () => {
+      const isHosts = Math.random() > 0.5;
+      const mascaraDecimal = Math.random() > 0.5;
+      const mask = [22, 24, 25, 26, 27, 28][Math.floor(Math.random()*6)];
+      let baseCidr = 24;
+      if (mask < 24) baseCidr = 16;
+      if (mask < 16) baseCidr = 8;
+      const baseIp = [`10.0.0.0/${baseCidr}`, `172.16.0.0/${baseCidr}`, `192.168.0.0/${baseCidr}`][Math.floor(Math.random()*3)];
+      return {
+        mask, mascaraDecimal, isHosts, baseIp, baseCidr,
+        reqHosts: Math.pow(2, 32 - mask) - 2,
+        reqRedes: Math.pow(2, mask - baseCidr)
+      };
+    };
+
+    const generarRandomM5 = () => {
+      const ips = [
+        { ip: '10.0.0.5', tipo: 'Privada' }, { ip: '172.16.4.10', tipo: 'Privada' }, { ip: '192.168.1.1', tipo: 'Privada' },
+        { ip: '8.8.8.8', tipo: 'Pública' }, { ip: '200.10.20.30', tipo: 'Pública' }, { ip: '172.10.1.20', tipo: 'Pública' }, 
+        { ip: '193.0.12.30', tipo: 'Pública' }, { ip: '127.0.0.1', tipo: 'Loopback' }, { ip: '169.254.10.5', tipo: 'APIPA' },
+        { ip: '224.0.0.1', tipo: 'Multicast' }
+      ];
+      return ips[Math.floor(Math.random() * ips.length)];
+    };
+
+    const generarRandomM6 = () => {
+      const mascaraBase = 24;
+      const bitsExtras = [1, 2, 3][Math.floor(Math.random()*3)];
+      const numSubredes = Math.pow(2, bitsExtras);
+      const nuevaMask = mascaraBase + bitsExtras;
+      const baseIp = `192.168.${Math.floor(Math.random()*50)}.0`;
+      const baseInt = ipToInt(baseIp);
+      const tamaño = Math.pow(2, 32 - nuevaMask);
+      
+      const subredes = [];
+      for(let i=0; i<numSubredes; i++) {
+        subredes.push(`${intToIp(baseInt + i*tamaño)}/${nuevaMask}`);
+      }
+      return { baseIp: `${baseIp}/${mascaraBase}`, numSubredes, subredes };
+    };
+
 
     // ==========================================
     // MÓDULO 1: CLASIFICADOR
@@ -532,17 +707,9 @@
     }
 
     function m2_random() {
-      const masks = [24, 25, 26, 27, 28, 29];
-      let cidrStr;
-      do {
-        const mask = masks[Math.floor(Math.random() * masks.length)];
-        const ipInt = ipToInt(`192.168.${Math.floor(Math.random()*10)}.0`);
-        const netInt = (ipInt & getMaskInt(mask)) >>> 0;
-        cidrStr = `${intToIp(netInt)}/${mask}`;
-      } while (cidrStr === m2_current.redStr);
-      
-      document.getElementById('m2-input-red').value = cidrStr;
-      m2_load(cidrStr);
+      const newM2 = generarRandomM2();
+      document.getElementById('m2-input-red').value = newM2.redStr;
+      m2_load(newM2.redStr);
     }
 
     // ==========================================
@@ -551,47 +718,11 @@
     let m3_current = {};
 
     function m3_init() {
-      // 50/50 estricto
-      const esAlcanzable = Math.random() > 0.5;
-      const mask = [24, 25, 26][Math.floor(Math.random()*3)];
-      
-      // Elegimos una red base aleatoria para el Host A (ej: 192.168.X.0)
-      const baseRedA = Math.floor(Math.random() * 50); // 0 a 49
-      const netBaseAInt = ipToInt(`192.168.${baseRedA}.0`);
-      
-      // Host A siempre está en esa red
-      const ipAInt = netBaseAInt + Math.floor(Math.random() * 200) + 1; 
-      
-      let ipBInt;
-      let redBaseB = baseRedA;
-
-      if (esAlcanzable) {
-        // Si es alcanzable, Host B está en la MISMA red (redBaseA)
-        ipBInt = netBaseAInt + Math.floor(Math.random() * 200) + 1;
-      } else {
-        // Si no es alcanzable, Host B va a una red DIFERENTE (ej: 192.168.Y.0, donde Y != X)
-        do {
-          redBaseB = Math.floor(Math.random() * 50);
-        } while (redBaseB === baseRedA);
-        
-        const netBaseBInt = ipToInt(`192.168.${redBaseB}.0`);
-        ipBInt = netBaseBInt + Math.floor(Math.random() * 200) + 1;
-      }
-
-      m3_current = {
-        ipA: `${intToIp(ipAInt)}/${mask}`,
-        ipB: `${intToIp(ipBInt)}/${mask}`,
-        redA: (ipAInt & getMaskInt(mask)) >>> 0,
-        redB: (ipBInt & getMaskInt(mask)) >>> 0,
-        mask: mask
-      };
-
+      m3_current = generarRandomM3();
       document.getElementById('m3-ipA').textContent = m3_current.ipA;
       document.getElementById('m3-ipB').textContent = m3_current.ipB;
-      
       document.getElementById('m3-feedback').classList.add('d-none');
       document.getElementById('m3-botones-respuesta').style.display = 'flex';
-      
       document.getElementById('m3-btn-si').disabled = false;
       document.getElementById('m3-btn-no').disabled = false;
     }
@@ -629,41 +760,23 @@
     let m4_current = {};
 
     function m4_init() {
-      const isHosts = Math.random() > 0.5;
-      const mascaraDecimal = Math.random() > 0.5;
-      
-      const maskList = [22, 24, 25, 26, 27, 28];
-      const mask = elegirAleatorioDistinto(maskList, m4_current.mask);
-      
-      let baseCidr = 24;
-      if (mask < 24) baseCidr = 16;
-      if (mask < 16) baseCidr = 8;
-      
-      const baseIpList = [
-        `10.0.0.0/${baseCidr}`, 
-        `172.16.0.0/${baseCidr}`, 
-        `192.168.0.0/${baseCidr}`,
-        `192.168.100.0/${baseCidr}`
-      ];
-      const baseIp = elegirAleatorioDistinto(baseIpList, m4_current.baseIp);
-      
-      const reqHosts = Math.pow(2, 32 - mask) - 2;
-      const reqRedes = Math.pow(2, mask - baseCidr); 
-
-      m4_current = { mask: mask, mascaraDecimal: mascaraDecimal, isHosts: isHosts, baseIp: baseIp, baseCidr: baseCidr };
+      m4_current = generarRandomM4();
+      m4_current.mask = elegirAleatorioDistinto([22, 24, 25, 26, 27, 28], m4_current.mask); 
+      m4_current.reqHosts = Math.pow(2, 32 - m4_current.mask) - 2;
+      m4_current.reqRedes = Math.pow(2, m4_current.mask - m4_current.baseCidr);
 
       let enunciado = '';
       let labelInput = '';
       
-      if (isHosts) {
-        enunciado = `Tenés el bloque <strong>${baseIp}</strong>.<br>
-          Necesitás crear subredes que soporten al menos <strong>${reqHosts} hosts útiles</strong> cada una.<br>`;
+      if (m4_current.isHosts) {
+        enunciado = `Tenés el bloque <strong>${m4_current.baseIp}</strong>.<br>
+          Necesitás crear subredes que soporten al menos <strong>${m4_current.reqHosts} hosts útiles</strong> cada una.<br>`;
       } else {
-        enunciado = `Tenés el bloque <strong>${baseIp}</strong>.<br>
-          Necesitás subdividirlo en al menos <strong>${reqRedes} subredes</strong>.<br>`;
+        enunciado = `Tenés el bloque <strong>${m4_current.baseIp}</strong>.<br>
+          Necesitás subdividirlo en al menos <strong>${m4_current.reqRedes} subredes</strong>.<br>`;
       }
       
-      if (mascaraDecimal) {
+      if (m4_current.mascaraDecimal) {
         enunciado += `¿Qué máscara usarías?`;
         labelInput = 'Máscara de subred (Formato decimal, ej: 255.255.255.0)';
         document.getElementById('m4-mask-input').placeholder = '255.255.255.0';
@@ -736,37 +849,18 @@
     let m5_current = {};
 
     function m5_init() {
-      const ips = [
-        // Privadas
-        { ip: '10.0.0.5', tipo: 'Privada' },
-        { ip: '10.255.1.1', tipo: 'Privada' },
-        { ip: '172.16.4.10', tipo: 'Privada' },
-        { ip: '172.25.30.40', tipo: 'Privada' },
-        { ip: '172.31.255.1', tipo: 'Privada' },
-        { ip: '192.168.1.1', tipo: 'Privada' },
-        { ip: '192.168.100.50', tipo: 'Privada' },
-        
-        // Públicas fáciles
-        { ip: '8.8.8.8', tipo: 'Pública' },
-        { ip: '20.30.12.0', tipo: 'Pública' },
-        { ip: '43.0.12.4', tipo: 'Pública' },
-        { ip: '200.10.20.30', tipo: 'Pública' },
-        
-        // Públicas "tramposas"
-        { ip: '172.10.1.20', tipo: 'Pública' },
-        { ip: '172.32.4.10', tipo: 'Pública' }, 
-        { ip: '193.0.12.30', tipo: 'Pública' },
-        
-        // Especiales
-        { ip: '127.0.0.1', tipo: 'Loopback' },
-        { ip: '127.50.60.70', tipo: 'Loopback' },
-        { ip: '169.254.10.5', tipo: 'APIPA' },
-        { ip: '169.254.200.100', tipo: 'APIPA' },
-        { ip: '224.0.0.1', tipo: 'Multicast' },
-        { ip: '239.1.2.3', tipo: 'Multicast' }
-      ];
-      
-      m5_current = elegirAleatorioDistinto(ips, m5_current);
+      m5_current = elegirAleatorioDistinto([
+        { ip: '10.0.0.5', tipo: 'Privada' }, { ip: '10.255.1.1', tipo: 'Privada' },
+        { ip: '172.16.4.10', tipo: 'Privada' }, { ip: '172.25.30.40', tipo: 'Privada' },
+        { ip: '172.31.255.1', tipo: 'Privada' }, { ip: '192.168.1.1', tipo: 'Privada' },
+        { ip: '192.168.100.50', tipo: 'Privada' }, { ip: '8.8.8.8', tipo: 'Pública' },
+        { ip: '20.30.12.0', tipo: 'Pública' }, { ip: '43.0.12.4', tipo: 'Pública' },
+        { ip: '200.10.20.30', tipo: 'Pública' }, { ip: '172.10.1.20', tipo: 'Pública' },
+        { ip: '172.32.4.10', tipo: 'Pública' }, { ip: '193.0.12.30', tipo: 'Pública' },
+        { ip: '127.0.0.1', tipo: 'Loopback' }, { ip: '127.50.60.70', tipo: 'Loopback' },
+        { ip: '169.254.10.5', tipo: 'APIPA' }, { ip: '169.254.200.100', tipo: 'APIPA' },
+        { ip: '224.0.0.1', tipo: 'Multicast' }, { ip: '239.1.2.3', tipo: 'Multicast' }
+      ], m5_current);
       
       document.getElementById('m5-ip').textContent = m5_current.ip;
       document.getElementById('m5-feedback').classList.add('d-none');
@@ -806,6 +900,401 @@
     }
 
     // ==========================================
+    // MÓDULO 6: LISTAR SUBREDES
+    // ==========================================
+    let m6_current = {};
+
+    function m6_init() {
+      m6_current = generarRandomM6();
+      const { baseIp, numSubredes } = m6_current;
+      
+      document.getElementById('m6-enunciado').innerHTML = `
+        Se tiene la red <strong>${baseIp}</strong>.<br>
+        Se debe dividir en <strong>${numSubredes} subredes de igual tamaño</strong>.<br>
+        Completá las direcciones de red resultantes (Formato IP/Máscara).
+      `;
+
+      const cont = document.getElementById('m6-inputs-container');
+      cont.innerHTML = '';
+      for(let i=0; i<numSubredes; i++) {
+        cont.innerHTML += `
+          <div class="input-group mb-2">
+            <span class="input-group-text fw-bold" style="width: 40px;">${i+1}</span>
+            <input type="text" class="form-control font-monospace m6-input" placeholder="Ej: 192.168.0.0/26">
+          </div>
+        `;
+      }
+
+      const inputs = cont.querySelectorAll('.m6-input');
+      if(inputs.length > 0) {
+        inputs[inputs.length - 1].addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); m6_check(); }
+        });
+      }
+
+      document.getElementById('m6-feedback').classList.add('d-none');
+    }
+
+    function m6_check() {
+      const inputs = document.querySelectorAll('.m6-input');
+      const fb = document.getElementById('m6-feedback');
+      let allCorrect = true;
+
+      inputs.forEach((inp, idx) => {
+        const val = inp.value.trim();
+        const correcta = m6_current.subredes[idx];
+        inp.classList.remove('is-valid', 'is-invalid');
+        if (val === correcta) {
+          inp.classList.add('is-valid');
+        } else {
+          inp.classList.add('is-invalid');
+          allCorrect = false;
+        }
+      });
+
+      fb.classList.remove('d-none');
+      if(allCorrect) {
+        fb.innerHTML = `<div class="alert alert-success py-2 mb-0">✅ ¡Todo perfecto! Las subredes están bien calculadas.</div>`;
+        mostrarToast('¡Correcto! Siguiente...', 'success');
+        setTimeout(m6_init, 1500);
+      } else {
+        fb.innerHTML = `<div class="alert alert-danger py-2 mb-0">❌ Hay errores. Revisá los que están en rojo.</div>`;
+        mostrarToast('Incorrecto. Revisá los campos.', 'danger');
+      }
+    }
+
+    // ==========================================
+    // MÓDULO 7: EXAMEN FINAL AVANZADO (6 PREGUNTAS)
+    // ==========================================
+    let ex_preguntas = [];
+    let ex_respuestas = [];
+    let ex_idx = 0;
+    let ex_puntaje = 0;
+
+    function ex_iniciar() {
+      ex_preguntas = [
+        { tipo: 'M1' }, { tipo: 'M2' }, { tipo: 'M3' }, { tipo: 'M4' }, { tipo: 'M5' }, { tipo: 'M6' }
+      ].sort(() => Math.random() - 0.5); 
+
+      ex_idx = 0;
+      ex_puntaje = 0;
+      ex_respuestas = [];
+      
+      document.getElementById('ex-inicio').style.display = 'none';
+      document.getElementById('ex-resultado').style.display = 'none';
+      document.getElementById('ex-juego').style.display = 'block';
+      
+      ex_renderPregunta();
+    }
+
+    function ex_renderPregunta() {
+      if (ex_idx >= 6) return ex_finalizar();
+      
+      document.getElementById('ex-num').textContent = ex_idx + 1;
+      const p = ex_preguntas[ex_idx];
+      const cont = document.getElementById('ex-contenido');
+      const btnSig = document.getElementById('ex-btn-siguiente');
+      btnSig.classList.add('d-none');
+
+      // MÓDULO 1: CLASIFICADOR
+      if (p.tipo === 'M1') {
+        document.getElementById('ex-modulo').textContent = 'Clasificador';
+        const baseInt = ipToInt('200.50.10.0');
+        const mask = 27;
+        const ip1Int = baseInt + Math.floor(Math.random() * 80); 
+        const ip2Int = baseInt + Math.floor(Math.random() * 80) + 100; 
+        const ipC = intToIp(baseInt + 200);
+
+        const ipA = intToIp(ip1Int);
+        const netA = intToIp(ip1Int & getMaskInt(mask));
+        const netB = intToIp(ip2Int & getMaskInt(mask));
+        const netC = intToIp((baseInt + 200) & getMaskInt(mask));
+
+        cont.innerHTML = `
+          <h6>Tenemos el bloque <strong>200.50.10.0/24</strong> subneteado en /27.<br>
+          Si el host tiene la IP <strong>${ipA}</strong>, ¿cuál es la dirección de red a la que pertenece?</h6>
+          <div class="form-check mb-2"><input class="form-check-input" type="radio" name="ex1" value="${netA}/27" id="r1a"><label class="form-check-label font-monospace" for="r1a">${netA}/27</label></div>
+          <div class="form-check mb-2"><input class="form-check-input" type="radio" name="ex1" value="${netB}/27" id="r1b"><label class="form-check-label font-monospace" for="r1b">${netB}/27</label></div>
+          <div class="form-check mb-2"><input class="form-check-input" type="radio" name="ex1" value="${netC}/27" id="r1c"><label class="form-check-label font-monospace" for="r1c">${netC}/27</label></div>
+          <div class="form-check mb-2"><input class="form-check-input" type="radio" name="ex1" value="200.50.10.0/24" id="r1d"><label class="form-check-label font-monospace" for="r1d">200.50.10.0/24</label></div>
+        `;
+        p.correcta = `${netA}/27`;
+        p.texto = `¿A qué red pertenece ${ipA} con máscara /27?`;
+        p.obtenerResp = () => {
+          const el = document.querySelector('input[name="ex1"]:checked');
+          return el ? el.value : null;
+        };
+      } 
+      // MÓDULO 2: CALCULADORA
+      else if (p.tipo === 'M2') {
+        document.getElementById('ex-modulo').textContent = 'Calculadora Inversa';
+        const mask = [26, 27, 28][Math.floor(Math.random()*3)];
+        const blockSize = Math.pow(2, 32 - mask);
+        const netInt = ipToInt(`10.1.${Math.floor(Math.random()*10)}.0`) & getMaskInt(mask);
+        
+        const tipoPregunta = Math.floor(Math.random() * 4);
+        
+        let textoPregunta = '';
+        let inputPlaceholder = 'Ej: 10.1.0.5';
+        let correcta = '';
+        
+        const netIp = intToIp(netInt);
+        const bcastIp = intToIp(netInt + blockSize - 1);
+        const minIp = intToIp(netInt + 1);
+        const maxIp = intToIp(netInt + blockSize - 2);
+        const segundoIp = intToIp(netInt + 2);
+
+        if (tipoPregunta === 0) {
+          textoPregunta = `Se sabe que la dirección de Broadcast de una red es <strong>${bcastIp}</strong> y su máscara es <strong>/${mask}</strong>.<br>
+          ¿Cuál es la <u>última IP útil</u> (Host máximo) de esa red?`;
+          correcta = maxIp;
+          inputPlaceholder = 'Ej: 10.1.0.254';
+        } else if (tipoPregunta === 1) {
+          textoPregunta = `Se tiene la red <strong>${netIp}/${mask}</strong>.<br>
+          ¿Cuál es la <u>dirección de Broadcast</u>?`;
+          correcta = bcastIp;
+          inputPlaceholder = 'Ej: 10.1.0.255';
+        } else if (tipoPregunta === 2) {
+          textoPregunta = `Se tiene la red <strong>${netIp}/${mask}</strong>.<br>
+          ¿Cuál es la <u>segunda IP útil</u> (el segundo host válido)?`;
+          correcta = segundoIp;
+          inputPlaceholder = 'Ej: 10.1.0.2';
+        } else {
+          textoPregunta = `Se sabe que la dirección de Broadcast de una red es <strong>${bcastIp}</strong> y su máscara es <strong>/${mask}</strong>.<br>
+          ¿Cuál es la <u>primera IP útil</u> de esa red?`;
+          correcta = minIp;
+          inputPlaceholder = 'Ej: 10.1.0.1';
+        }
+
+        cont.innerHTML = `
+          <h6>${textoPregunta}</h6>
+          <input type="text" class="form-control font-monospace mt-2" id="ex-in-m2" placeholder="${inputPlaceholder}">
+        `;
+        p.correcta = correcta;
+        p.texto = `Cálculo para red /${mask}.`;
+        p.obtenerResp = () => document.getElementById('ex-in-m2').value.trim();
+      }
+      // MÓDULO 3: RUTEO
+      else if (p.tipo === 'M3') {
+        document.getElementById('ex-modulo').textContent = '¿Es Alcanzable?';
+        
+        const mask = [24, 25, 26][Math.floor(Math.random()*3)];
+        const baseInt = ipToInt(`192.168.5.0`);
+        const ipAInt = baseInt + 10;
+        const ipBInt = baseInt + 200;
+        
+        const redA = ipAInt & getMaskInt(mask);
+        const redB = ipBInt & getMaskInt(mask);
+        const alcanzable = (redA === redB);
+
+        cont.innerHTML = `
+          <h6>¿Pueden comunicarse estos hosts directamente sin router?</h6>
+          <p class="font-monospace fs-5 mb-1">Host A: ${intToIp(ipAInt)}/${mask}</p>
+          <p class="font-monospace fs-5 mb-3">Host B: ${intToIp(ipBInt)}/${mask}</p>
+          <div class="form-check"><input class="form-check-input" type="radio" name="ex3" value="si" id="r_si"><label class="form-check-label" for="r_si">Sí, comparten la misma red.</label></div>
+          <div class="form-check"><input class="form-check-input" type="radio" name="ex3" value="no" id="r_no"><label class="form-check-label" for="r_no">No, la máscara los separa en redes distintas.</label></div>
+        `;
+        p.correcta = alcanzable ? 'si' : 'no';
+        p.texto = `IP A: ${intToIp(ipAInt)}/${mask} vs IP B: ${intToIp(ipBInt)}/${mask}`;
+        p.obtenerResp = () => {
+          const el = document.querySelector('input[name="ex3"]:checked');
+          return el ? el.value : null;
+        };
+      }
+      // MÓDULO 4: SUBNETTING
+      else if (p.tipo === 'M4') {
+        document.getElementById('ex-modulo').textContent = 'Subnetting (VLSM)';
+        
+        cont.innerHTML = `
+          <h6>Tenés el bloque <strong>172.16.0.0/24</strong>.<br>
+          Necesitás dividirlo en <strong>al menos 5 subredes</strong> del mismo tamaño.<br>
+          ¿Cuál es la máscara <u>óptima</u> (la más grande posible) que te permite cumplir esto?</h6>
+          <input type="text" class="form-control font-monospace mt-2" id="ex-in-m4" placeholder="/27 o 255.255.255.224">
+        `;
+        p.correcta = `/${27}`; 
+        p.texto = `Dividir 172.16.0.0/24 en al menos 5 subredes.`;
+        p.obtenerResp = () => {
+          let v = document.getElementById('ex-in-m4').value.trim();
+          if(!v) return null;
+          try { return `/${maskToCidr(v)}`; } catch(e) { return v; }
+        };
+      }
+      // MÓDULO 5: CLASES
+      else if (p.tipo === 'M5') {
+        document.getElementById('ex-modulo').textContent = 'Clases y Especiales';
+        
+        cont.innerHTML = `
+          <h6>Ingresá una dirección IP de cada tipo (sin máscara):</h6>
+          <div class="mb-2">
+            <label class="fw-bold small">1. Una IP PÚBLICA válida:</label>
+            <input type="text" class="form-control font-monospace" id="ex-in-m5-pub">
+          </div>
+          <div class="mb-2">
+            <label class="fw-bold small">2. Una IP PRIVADA válida (Clase A, B o C):</label>
+            <input type="text" class="form-control font-monospace" id="ex-in-m5-priv">
+          </div>
+        `;
+        p.texto = `Escribir una IP Pública y una Privada.`;
+        p.obtenerResp = () => {
+          const pub = document.getElementById('ex-in-m5-pub').value.trim();
+          const priv = document.getElementById('ex-in-m5-priv').value.trim();
+          
+          const pubValida = esPublicaValida(pub);
+          const privValida = esPrivada(priv);
+
+          return { pub, priv, pubValida, privValida };
+        };
+        p.evaluar = () => {
+          const res = p.obtenerResp();
+          return res.pubValida && res.privValida;
+        };
+      }
+      // MÓDULO 6: VLSM EXTREMO (NUEVA PREGUNTA)
+      else if (p.tipo === 'M6') {
+        document.getElementById('ex-modulo').textContent = 'VLSM (Diseño Complejo)';
+
+        cont.innerHTML = `
+          <h6>Tenés el bloque <strong>172.16.0.0/16</strong>. Un cliente necesita segmentar su red en <strong>3 subredes</strong> con la siguiente capacidad (en orden de mayor a menor):</h6>
+          <ul class="small mb-3">
+            <li>Subred 1: Al menos <strong>160 hosts</strong>.</li>
+            <li>Subred 2: Al menos <strong>55 hosts</strong>.</li>
+            <li>Subred 3: Al menos <strong>10 hosts</strong>.</li>
+          </ul>
+          <p class="small text-muted mb-2">Asigná las direcciones de red de forma contigua y sin desperdiciar espacio (VLSM). Completá la tabla:</p>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered font-monospace" style="font-size: 0.85rem;">
+              <thead class="table-light">
+                <tr>
+                  <th style="width: 80px;">Subred</th>
+                  <th>Red (IP/Máscara)</th>
+                  <th style="width: 100px;">Hosts Útiles</th>
+                  <th>Primera IP</th>
+                  <th>Última IP</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>160 hosts</td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r1-net"></td>
+                  <td><input type="number" class="form-control form-control-sm font-monospace" id="m6-r1-h"></td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r1-min"></td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r1-max"></td>
+                </tr>
+                <tr>
+                  <td>55 hosts</td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r2-net"></td>
+                  <td><input type="number" class="form-control form-control-sm font-monospace" id="m6-r2-h"></td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r2-min"></td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r2-max"></td>
+                </tr>
+                <tr>
+                  <td>10 hosts</td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r3-net"></td>
+                  <td><input type="number" class="form-control form-control-sm font-monospace" id="m6-r3-h"></td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r3-min"></td>
+                  <td><input type="text" class="form-control form-control-sm font-monospace" id="m6-r3-max"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        `;
+        p.texto = `VLSM: 3 subredes (160, 55, 10 hosts) en 172.16.0.0/16.`;
+        p.obtenerResp = () => {
+          return {
+            r1: { net: document.getElementById('m6-r1-net').value.trim(), h: document.getElementById('m6-r1-h').value.trim(), min: document.getElementById('m6-r1-min').value.trim(), max: document.getElementById('m6-r1-max').value.trim() },
+            r2: { net: document.getElementById('m6-r2-net').value.trim(), h: document.getElementById('m6-r2-h').value.trim(), min: document.getElementById('m6-r2-min').value.trim(), max: document.getElementById('m6-r2-max').value.trim() },
+            r3: { net: document.getElementById('m6-r3-net').value.trim(), h: document.getElementById('m6-r3-h').value.trim(), min: document.getElementById('m6-r3-min').value.trim(), max: document.getElementById('m6-r3-max').value.trim() }
+          };
+        };
+        p.evaluar = () => {
+          const res = p.obtenerResp();
+          let ok1 = (res.r1.net === '172.16.0.0/24' && res.r1.h === '254' && res.r1.min === '172.16.0.1' && res.r1.max === '172.16.0.254');
+          let ok2 = (res.r2.net === '172.16.1.0/26' && res.r2.h === '62' && res.r2.min === '172.16.1.1' && res.r2.max === '172.16.1.62');
+          let ok3 = (res.r3.net === '172.16.1.64/28' && res.r3.h === '14' && res.r3.min === '172.16.1.65' && res.r3.max === '172.16.1.78');
+          return ok1 && ok2 && ok3;
+        };
+        p.detalleError = () => {
+           const res = p.obtenerResp();
+           let errs = [];
+           if(res.r1.net !== '172.16.0.0/24') errs.push('Falla en Red 1 (esperaba 172.16.0.0/24)');
+           if(res.r1.h !== '254') errs.push('Falla en Hosts 1');
+           if(res.r2.net !== '172.16.1.0/26') errs.push('Falla en Red 2 (esperaba 172.16.1.0/26)');
+           if(res.r3.net !== '172.16.1.64/28') errs.push('Falla en Red 3 (esperaba 172.16.1.64/28)');
+           return errs.length ? errs.join(', ') : 'Revisá los rangos de IP.';
+        };
+      }
+
+      btnSig.onclick = () => {
+        let esCorrecta = false;
+        let detalle = '';
+
+        if(p.tipo === 'M5') {
+          const res = p.obtenerResp();
+          esCorrecta = p.evaluar();
+          
+          let errs = [];
+          if(!res.pubValida) errs.push(`IP Pública inválida (${res.pub || 'vacía'})`);
+          if(!res.privValida) errs.push(`IP Privada inválida (${res.priv || 'vacía'})`);
+          
+          detalle = esCorrecta 
+            ? `Pública: ${res.pub} | Privada: ${res.priv}`
+            : `Errores: ${errs.join(' y ')}`;
+        } else if (p.tipo === 'M6') {
+          esCorrecta = p.evaluar();
+          detalle = esCorrecta ? `Configuración VLSM correcta.` : `Errores: ${p.detalleError()}`;
+        } else {
+          const resp = p.obtenerResp();
+          esCorrecta = (resp === p.correcta);
+          detalle = `Tu respuesta: ${resp || 'Ninguna'} | Correcta: ${p.correcta}`;
+        }
+        
+        if (esCorrecta) ex_puntaje++;
+        
+        ex_respuestas.push({
+          texto: p.texto,
+          correcta: esCorrecta,
+          detalle: detalle
+        });
+
+        ex_idx++;
+        ex_renderPregunta();
+      };
+      
+      btnSig.classList.remove('d-none');
+      btnSig.textContent = (ex_idx === 5) ? 'Finalizar Examen' : 'Siguiente Pregunta';
+    }
+
+    function ex_finalizar() {
+      document.getElementById('ex-juego').style.display = 'none';
+      document.getElementById('ex-resultado').style.display = 'block';
+      
+      document.getElementById('ex-puntaje').textContent = `${ex_puntaje} / 6`;
+      
+      let msj = '';
+      if (ex_puntaje === 6) msj = '¡Perfecto! Sos un experto absoluto en IPv4.';
+      else if (ex_puntaje === 5) msj = '¡Excelente! Te faltó muy poco para el 100%.';
+      else if (ex_puntaje >= 3) msj = 'Aprobaste, pero hay conceptos que conviene repasar.';
+      else msj = 'Necesitás repasar bastante. ¡Usá los otros módulos para practicar!';
+
+      document.getElementById('ex-mensaje').textContent = msj;
+
+      const revCont = document.getElementById('ex-revision');
+      revCont.innerHTML = '<h5 class="mb-3">Detalle de tus respuestas:</h5>';
+      
+      ex_respuestas.forEach((r, i) => {
+        const color = r.correcta ? 'resultado-ok' : 'resultado-err';
+        const icon = r.correcta ? '<i class="fa fa-check-circle text-success me-1"></i>' : '<i class="fa fa-times-circle text-danger me-1"></i>';
+        
+        revCont.innerHTML += `
+          <div class="resultado-item ${color}">
+            <p class="mb-1 fw-bold">${icon} Pregunta ${i+1}: ${r.texto}</p>
+            <p class="mb-0 small text-muted font-monospace">${r.detalle}</p>
+          </div>
+        `;
+      });
+    }
+
+    // ==========================================
     // ASIGNACIÓN DE EVENTOS Y ARRANQUE
     // ==========================================
     document.addEventListener('DOMContentLoaded', () => {
@@ -821,20 +1310,21 @@
       // Módulo 4
       document.getElementById('btn-reset-4').addEventListener('click', m4_init);
       document.getElementById('m4-check').addEventListener('click', m4_check);
-      
-      // FIX: Escuchar Enter en el input de Subnetting
       document.getElementById('m4-mask-input').addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault(); // Evita que recargue la página o haga submit
-          m4_check();
-        }
+        if (e.key === 'Enter') { e.preventDefault(); m4_check(); }
       });
-
       // Módulo 5
       document.getElementById('btn-reset-5').addEventListener('click', m5_init);
       document.querySelectorAll('#m5-opciones button').forEach(b => {
         b.addEventListener('click', function() { m5_responder(this, this.getAttribute('data-val')); });
       });
+      // Módulo 6
+      document.getElementById('btn-reset-6').addEventListener('click', m6_init);
+      document.getElementById('m6-check').addEventListener('click', m6_check);
+      
+      // Módulo 7 (Examen)
+      document.getElementById('btn-ex-iniciar').addEventListener('click', ex_iniciar);
+      document.getElementById('btn-ex-reiniciar').addEventListener('click', ex_iniciar);
 
       // Inicializar todos
       m1_init();
@@ -842,9 +1332,9 @@
       m3_init();
       m4_init();
       m5_init();
+      m6_init();
     });
 
-    // Exponer m3_init globalmente para el botón inline de error
     window.m3_init = m3_init;
 
   })();
