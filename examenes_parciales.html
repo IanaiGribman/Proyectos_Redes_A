@@ -158,7 +158,7 @@ function candidates(a, pool) {
   if (/^[Ss][ií]$|^[Nn]o$/.test(a)) return null;                                        // Sí / No
   if (isCidr(a)) {
     const [net, ps] = a.split('/'), p = +ps, base = ip2n(net), size = 2 ** (32 - p), out = [];
-    [[base + size, p], [base - size, p], [base, p + 1], [base, p - 1], [base + 2 * size, p], [base, p + 2], [base, p - 2], [base + size, p + 1]].forEach(([b, q]) => { if (inRange(b) && q >= 1 && q <= 32) out.push(n2ip(b) + '/' + q); });
+    [[base + size, p], [base - size, p], [base, p + 1], [base, p - 1], [base + 2 * size, p], [base, p + 2], [base, p - 2], [base + size, p + 1]].forEach(([b, q]) => { const k = p >= 16 ? 2 : 1; if (inRange(b) && q >= 1 && q <= 32 && n2ip(b).split('.').slice(0, k).join('.') === net.split('.').slice(0, k).join('.')) out.push(n2ip(b) + '/' + q); });
     return [...out.slice(0, 6), ...poolCidr];
   }
   if (isMask(a)) { const p = prefOfMask(a); return [p - 1, p + 1, p - 2, p + 2, p - 4, p + 4].filter(q => q >= 1 && q <= 30).map(maskOf); }
@@ -188,7 +188,7 @@ function candidates(a, pool) {
 function buildField(ex, pi, ci, pool) {
   const [label, ans, ...alts] = ex.p[pi].c[ci], correct = fmtAns(ans), ban = new Set([norm(ans), ...alts.map(norm), norm(correct)]);
   if (/^[Ss][ií]$|^[Nn]o$/.test(ans)) { return { label, opts:['Sí', 'No'], ok:norm(ans).startsWith('s') ? 0 : 1, sel:null }; }
-  const manual = OVR[`${ex.id}|${pi}|${ci}`], list = [];
+  const manual = OVR[`${ex.id}|${pi}|${ci}`] || (ex.p[pi].d || {})[ci], list = [];
   const add = v => { v = String(v); if (!ban.has(norm(v)) && !list.some(x => norm(x) === norm(v))) list.push(v); };
   (manual || (candidates(ans, pool) || [])).forEach(add);
   const top = manual ? list : [...shuffle(list.slice(0, 5)), ...list.slice(5)];
@@ -197,6 +197,50 @@ function buildField(ex, pi, ci, pool) {
   const opts = shuffle([correct, ...out]);
   return { label, opts, ok:opts.indexOf(correct), sel:null };
 }
+
+const SPEC = `Generá un archivo JSON con exámenes de parcial para un simulador de exámenes en opción múltiple. Respondé únicamente con el JSON válido (sin comentarios ni texto adicional).
+
+ESTRUCTURA GENERAL
+{
+  "examenes": [
+    {
+      "id": "modelo-1",
+      "titulo": "Parcial modelo 1 - Enlace y red",
+      "t": [ ...preguntas de teoría... ],
+      "p": [ ...ejercicios prácticos... ]
+    }
+  ]
+}
+"id" es único y sin espacios. Se pueden incluir varios exámenes en la lista.
+
+TEORÍA ("t"): 5 puntos cada pregunta
+{ "e": "enunciado", "o": [ ["texto de la opción", 1, "justificación"], ["otra opción", 0, "justificación"] ] }
+- "o" tiene 4 opciones. El segundo valor es 1 si la opción es verdadera (correcta) y 0 si es falsa.
+- Puede haber varias correctas (lo típico: 2 o 3 de 4) y siempre al menos una.
+- Puntaje de la pregunta: 5 × (correctas marcadas − incorrectas marcadas) / total de correctas, con mínimo 0.
+- La justificación es una frase corta que se muestra al corregir y explica por qué la opción es correcta o incorrecta.
+
+PRÁCTICA ("p"): ejercicios con puntos propios
+{
+  "titulo": "Subnetting / VLSM",
+  "e": "enunciado con todos los datos necesarios para resolverlo",
+  "pts": 15,
+  "c": [ ["a) Red A", "192.168.10.0/25"], ["b) Broadcast A", "192.168.10.127"], ["c) Fenómeno", "bucle de ruteo", "bucle", "routing loop"] ],
+  "j": "resolución paso a paso del ejercicio completo",
+  "d": { "2": ["tormenta de broadcast", "cuenta a infinito", "convergencia inmediata"] }
+}
+- Cada ítem de "c" es [etiqueta, respuesta correcta, ...alternativas equivalentes opcionales] y la página lo convierte en una pregunta de opción múltiple con una sola correcta. Los puntos del ejercicio se reparten en partes iguales entre sus ítems.
+- La etiqueta es corta y autoexplicativa, por ejemplo "a) Broadcast de la subred B".
+- La respuesta correcta debe ser corta y sin ambigüedad. Tipos soportados: dirección IP ("10.0.0.1"), red en CIDR ("192.168.1.0/24"), máscara ("255.255.255.0"), prefijo ("/24"), número ("254"), lista de puertos ("2,3,4"), "si" o "no", nombre de router ("R2") o letra ("A").
+- Para esos tipos la página genera sola los distractores. Si la respuesta es TEXTO libre (por ejemplo "bucle de ruteo", una MAC genérica o "IP:puerto"), agregá en "d" exactamente 3 distractores plausibles; la clave es el índice del ítem dentro de "c", empezando en 0.
+- Las alternativas equivalentes (tercer elemento en adelante de cada ítem) evitan que se ofrezca como distractor otra forma válida de la misma respuesta.
+- "j" explica el razonamiento correcto y se muestra al corregir.
+
+REGLAS
+- JSON válido en UTF-8: comillas dobles, sin comas finales. Se permiten tildes y ñ.
+- Salvo que se indique otra cosa: 10 preguntas de teoría y 3 ejercicios prácticos por examen, con 100 puntos en total (teoría 50 + práctica 50, por ejemplo 15 + 20 + 15).
+- Evitá preguntas ambiguas: una opción sólo es correcta si es incuestionablemente verdadera.
+- Variá los temas entre preguntas y entre exámenes.`;
 
 /* ===== puntajes ===== */
 const scoreT = T => {
@@ -231,6 +275,11 @@ function renderSetup() {
     <div class="actions"><button class="btn" data-act="start">Comenzar</button></div>
     <details class="quiet"><summary>Cargar otro JSON de exámenes</summary>
       <p class="muted small" style="margin:8px 0 0">Mismo formato que el incluido: <code>{"examenes":[{id, titulo, t:[…], p:[…]}]}</code>. Los campos de los ejercicios prácticos se convierten automáticamente en opción múltiple.</p>
+      <h3 style="margin-top:16px">Para generarlo con un agente</h3>
+      <p class="muted small" style="margin:0 0 8px">Copiá estas instrucciones y pegáselas a un agente junto con el tema o el material del parcial: describen el formato exacto que espera esta página.</p>
+      <div class="actions" style="margin-top:0"><button class="btn secondary" data-act="copy">Copiar instrucciones</button><span class="muted small" id="o-copied"></span></div>
+      <textarea id="o-spec" readonly style="min-height:200px">${esc(SPEC)}</textarea>
+      <h3 style="margin-top:16px">Pegar o subir el JSON</h3>
       <input type="file" id="o-file" accept=".json,application/json" style="margin-top:10px"><textarea id="o-text" placeholder="…o pegá el JSON acá"></textarea>
       <div class="actions" style="margin-top:10px"><button class="btn secondary" data-act="load">Cargar</button></div></details></div>`;
 }
@@ -302,6 +351,11 @@ document.addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const act = b.dataset.act, i = +b.dataset.i;
   if (act === 'start') start(S.sel);
+  else if (act === 'copy') {
+    const done = ok => { const m = $('#o-copied'); if (m) m.textContent = ok ? 'Copiado ✔' : 'No se pudo copiar: seleccioná el texto y copialo a mano'; };
+    const fallback = () => { const ta = $('#o-spec'); ta.focus(); ta.select(); let ok = false; try { ok = document.execCommand('copy'); } catch (_) {} done(ok); };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(SPEC).then(() => done(true), fallback); else fallback();
+  }
   else if (act === 'load') { const v = $('#o-text').value.trim(); if (v) loadJson(v); }
   else if (act === 'ct') { X.t[i].checked = true; replaceCard('t' + i); refreshBar(); }
   else if (act === 'cp') { X.p[i].checked = true; replaceCard('p' + i); refreshBar(); }
