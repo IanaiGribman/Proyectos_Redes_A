@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de protocolos complementarios a IP: ARP, RARP, DHCP e ICMP</title>
+<style>
+  :root {
+    --bg:#f3f6fb; --surface:#fff; --surface-2:#f8fafc; --text:#172033; --muted:#64748b; --line:#dbe3ef;
+    --primary:#3157d5; --primary-dark:#2443ad; --accent:#0f9d85; --danger:#c24141; --warning:#9a6700;
+    --shadow:0 8px 25px rgba(20,35,70,.07); --radius:16px;
+    --k-arp:#8b5cf6; --k-rarp:#d946ef; --k-ip:#3157d5; --k-icmp:#e08a00; --k-icmperr:#c24141; --k-dhcp:#0f9d85; --k-think:#64748b;
+    --kc:#3157d5;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
+  button, input, select { font:inherit; }
+  button { cursor:pointer; }
+  code { font-family:ui-monospace, SFMono-Regular, Consolas, monospace; font-size:.9em; background:#eef2ff; color:#27389a; padding:1px 5px; border-radius:5px; }
+  .hero { background:linear-gradient(120deg,#172554,#3157d5); color:#fff; padding:28px max(22px, calc((100% - 1240px)/2)); }
+  .hero h1 { margin:0 0 5px; font-size:clamp(24px,3vw,34px); letter-spacing:-.04em; }
+  .hero p { margin:0; color:#dbeafe; max-width:820px; }
+  .container { max-width:1240px; padding:22px; margin:auto; }
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin:0 0 18px; }
+  .tab { border:1px solid var(--line); background:#fff; color:#475569; border-radius:999px; padding:9px 16px; font-weight:650; }
+  .tab.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; min-width:0; }
+  .card + .card, .grid2 + .card, .card + .grid2 { margin-top:16px; }
+  .grid2 { display:grid; grid-template-columns:minmax(320px,1.25fr) minmax(300px,1fr); gap:16px; align-items:start; margin-top:16px; }
+  h2 { font-size:19px; margin:0 0 12px; letter-spacing:-.02em; }
+  h3 { font-size:15px; margin:14px 0 8px; }
+  .muted { color:var(--muted); } .small { font-size:12px; }
+  .section-head { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:10px; }
+  /* formulario */
+  .form { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; margin-top:10px; }
+  .field { display:flex; flex-direction:column; gap:4px; min-width:150px; }
+  .field.check { flex-direction:row; align-items:center; gap:8px; min-width:0; padding-bottom:9px; }
+  label { color:#475569; font-size:12px; font-weight:700; }
+  input[type=text], input[type=number], select { border:1px solid #cbd5e1; border-radius:9px; padding:8px 10px; background:#fff; color:var(--text); min-width:0; }
+  input:focus, select:focus { outline:3px solid rgba(49,87,213,.14); border-color:var(--primary); }
+  .btn { border:0; border-radius:9px; padding:9px 14px; color:#fff; background:var(--primary); font-weight:700; transition:.15s; }
+  .btn:hover { background:var(--primary-dark); }
+  .btn.secondary { color:#334155; background:#e9eef7; } .btn.secondary:hover { background:#dce5f2; }
+  .btn.ghost { color:var(--primary); background:#eef2ff; } .btn.ghost:hover { background:#e0e7ff; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .chips { display:flex; flex-wrap:wrap; gap:7px; margin-top:12px; align-items:center; }
+  .chip { border:1px solid var(--line); background:#fff; color:#475569; border-radius:8px; padding:5px 10px; font-size:12px; font-weight:700; }
+  .chip:hover { background:#f1f5f9; }
+  details { border:1px solid var(--line); border-radius:11px; padding:9px 13px; background:var(--surface-2); margin-top:12px; }
+  details summary { cursor:pointer; font-weight:700; color:#334155; }
+  details p, details ul { margin:8px 0 0; } details ul { padding-left:20px; }
+  .notice { padding:10px 12px; border-radius:10px; background:#eff6ff; color:#1e40af; font-size:13px; }
+  .notice.warn { background:#fff7e6; color:#8a5a00; }
+  /* topología */
+  .topo-wrap { border:1px solid var(--line); background:linear-gradient(#fff,#fbfdff); border-radius:12px; overflow:hidden; }
+  #topo { display:block; width:100%; height:auto; user-select:none; }
+  .bus { stroke:#cbd5e1; stroke-width:8; stroke-linecap:round; transition:stroke .2s; }
+  .bus.hot { stroke:var(--kc); }
+  .stem { stroke:#cbd5e1; stroke-width:3; }
+  .lan-label { font-size:12px; font-weight:700; fill:#64748b; }
+  .if-label { font-size:11px; fill:#475569; font-family:ui-monospace,Consolas,monospace; }
+  .node .box { fill:#fff; stroke:#94a3b8; stroke-width:2; transition:.2s; }
+  .node .rt { fill:#eef2ff; stroke:#3157d5; stroke-width:2.5; transition:.2s; }
+  .node .nm { font-weight:800; font-size:15px; text-anchor:middle; fill:#172033; }
+  .node .ipt { font-size:11.5px; text-anchor:middle; fill:#475569; font-family:ui-monospace,Consolas,monospace; }
+  .node.from .box, .node.from .rt { stroke:var(--kc); stroke-width:4; }
+  .node.ok .box, .node.ok .rt { stroke:#0f9d85; fill:#ecfdf5; stroke-width:4; }
+  .node.upd .box, .node.upd .rt, .node.think .box, .node.think .rt { stroke:#d97706; fill:#fffbeb; stroke-width:4; }
+  .node.no { opacity:.5; }
+  .badge { font-size:12px; font-weight:800; text-anchor:middle; paint-order:stroke; stroke:#fff; stroke-width:4px; stroke-linejoin:round; }
+  .badge.ok { fill:#087b68; } .badge.no { fill:#64748b; } .badge.think { fill:#946200; } .badge.from { fill:var(--kc); }
+  .token rect { fill:var(--kc); } .token text { fill:#fff; font-size:11px; font-weight:800; text-anchor:middle; }
+  .controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:12px; }
+  .controls input[type=range] { flex:1; min-width:140px; }
+  .stepno { font-weight:800; min-width:92px; text-align:center; }
+  /* detalle del paso */
+  .tag { display:inline-block; color:#fff; background:var(--k-think); border-radius:999px; padding:1px 9px; font-size:11px; font-weight:800; vertical-align:middle; }
+  .tag.arp { background:var(--k-arp); } .tag.rarp { background:var(--k-rarp); } .tag.ip { background:var(--k-ip); }
+  .tag.icmp { background:var(--k-icmp); } .tag.icmperr { background:var(--k-icmperr); } .tag.dhcp { background:var(--k-dhcp); }
+  .step-title { font-size:17px; font-weight:800; margin:0 0 8px; letter-spacing:-.01em; }
+  .step-body p { margin:6px 0; }
+  .calc { background:#f8fafc; border:1px solid var(--line); border-radius:9px; padding:7px 10px; }
+  .learn { margin:8px 0 0; padding:8px 11px; border-radius:9px; background:#ecfdf5; color:#065f46; font-size:13px; }
+  .layer { border:1px solid var(--line); border-radius:11px; margin-top:9px; overflow:hidden; }
+  .layer > .lh { background:#eef2ff; color:#27389a; font-weight:800; font-size:12px; padding:5px 10px; }
+  .fields { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); }
+  .fld { padding:6px 10px; border-top:1px solid #eef1f6; border-right:1px solid #eef1f6; min-width:0; overflow-wrap:anywhere; }
+  .fld .l { display:block; font-size:10.5px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+  .fld .v { font-family:ui-monospace,Consolas,monospace; font-size:12.5px; font-weight:600; }
+  .fld .v small { font-family:inherit; font-weight:700; color:#27389a; background:#eef2ff; border-radius:5px; padding:0 5px; margin-left:3px; }
+  .fld.changed { background:#fff7e0; } .fld.changed .l::after { content:" · cambió"; color:#b45309; }
+  .mcq { border:2px dashed #c7d2fe; border-radius:12px; padding:11px 13px; background:#f8faff; margin-top:10px; }
+  .mcq .opts { display:grid; gap:7px; margin-top:8px; }
+  .mcq .opt { text-align:left; border:1px solid #cbd5e1; background:#fff; border-radius:9px; padding:8px 11px; font-family:ui-monospace,Consolas,monospace; font-size:13px; font-weight:600; }
+  .mcq .opt:hover { background:#eef2ff; }
+  .mcq .opt.right { background:#dcfce7; border-color:#16a34a; } .mcq .opt.wrong { background:#fee2e2; border-color:#dc2626; }
+  .score { font-weight:800; color:#27389a; }
+  /* lista de pasos */
+  .steplist { position:relative; max-height:300px; overflow:auto; display:flex; flex-direction:column; gap:5px; padding-right:3px; }
+  .si { display:flex; gap:8px; align-items:center; text-align:left; border:1px solid var(--line); background:#fff; border-radius:9px; padding:6px 9px; font-size:13px; }
+  .si:hover { background:#f8fafc; } .si.active { border-color:var(--primary); background:#eef2ff; font-weight:700; }
+  .si.future { opacity:.55; } .si .n { color:var(--muted); font-weight:800; min-width:20px; }
+  /* dispositivos */
+  .devs { display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; }
+  .dev { border:1px solid var(--line); border-radius:11px; padding:9px 11px; background:#fff; font-size:12.5px; }
+  .dev.changed { border-color:#f59e0b; box-shadow:0 0 0 3px #fef3c7; }
+  .dev .dn { font-weight:800; font-size:14px; } .dev .dr { color:var(--muted); font-size:11.5px; }
+  .dev .mono { font-family:ui-monospace,Consolas,monospace; font-size:11.5px; }
+  .dev .ifline { margin-top:4px; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; }
+  th, td { border:1px solid var(--line); padding:5px 8px; text-align:left; } th { background:#f1f5f9; }
+  .tw { overflow:auto; }
+  td.m, .mono { font-family:ui-monospace,Consolas,monospace; font-size:12px; }
+  tr.cur td { background:#eef2ff; font-weight:700; } tr.fut td { opacity:.45; }
+  tr.chosen td { background:#ecfdf5; font-weight:700; }
+  table.mini { margin:6px 0; } table.mini td, table.mini th { padding:3px 7px; }
+  .arpt { margin-top:6px; } .arpt td.new { background:#dcfce7; font-weight:700; }
+  .enc { display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+  .encrow { display:flex; align-items:stretch; font-size:12px; font-weight:700; flex-wrap:wrap; }
+  .encrow span { padding:8px 12px; border:2px solid #fff; color:#fff; text-align:center; }
+  .encrow .eth { background:#475569; } .encrow .ip { background:#3157d5; } .encrow .udp { background:#0f9d85; }
+  .encrow .dhcp { background:#14b8a6; } .encrow .icmp { background:#e08a00; } .encrow .arp { background:#8b5cf6; } .encrow .rarp { background:#d946ef; }
+  .encrow .lbl { background:transparent; color:#475569; border:0; min-width:150px; text-align:left; align-self:center; }
+  @media (max-width:900px) { .grid2 { grid-template-columns:1fr; } }
+  @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>Protocolos complementarios a IP: ARP, RARP, DHCP e ICMP</h1>
+  <p>Seguí paso a paso cómo viaja un paquete entre routers y cómo hosts y routers descubren las direcciones MAC (y las IP) necesarias para armar cada trama. Una sola página, sin dependencias: se puede guardar y abrir sin conexión.</p>
+</header>
+<main class="container">
+  <nav class="tabs" id="tabs" aria-label="Escenarios"></nav>
+
+  <section id="view-sim">
+    <div class="card">
+      <div class="section-head"><h2 id="sc-title" style="margin:0"></h2></div>
+      <div id="sc-intro" class="muted"></div>
+      <div class="form" id="form"></div>
+      <div class="chips" id="presets"></div>
+      <div class="chips" style="margin-top:10px">
+        <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="clr" checked> Vaciar las cachés ARP antes de cada simulación</label>
+        <button class="btn ghost" id="btn-flush">Vaciar cachés ahora</button>
+        <span class="muted small" id="cache-count"></span>
+      </div>
+      <details id="theory"><summary>Teoría de este escenario</summary><div id="theory-body"></div></details>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <h2 style="margin:0">Red de práctica</h2>
+        <span class="muted small">Tres redes Ethernet conmutadas unidas por dos routers · el color del enlace indica el protocolo en juego</span>
+      </div>
+      <div class="topo-wrap"><svg id="topo" viewBox="0 0 1000 310" role="img" aria-label="Topología de la red"></svg></div>
+      <div class="controls">
+        <button class="btn secondary" id="b-first" title="Primer paso">⏮</button>
+        <button class="btn secondary" id="b-prev" title="Anterior (←)">◀</button>
+        <button class="btn" id="b-play">▶ Reproducir</button>
+        <button class="btn secondary" id="b-next" title="Siguiente (→)">▶▶</button>
+        <button class="btn secondary" id="b-last" title="Último paso">⏭</button>
+        <span class="stepno" id="stepno"></span>
+        <input type="range" id="slider" min="0" max="0" value="0" aria-label="Paso">
+        <select id="speed" aria-label="Velocidad"><option value="0.5">0,5×</option><option value="1" selected>1×</option><option value="2">2×</option></select>
+      </div>
+      <div class="chips" style="margin-top:10px">
+        <label style="display:flex;gap:6px;align-items:center;font-weight:600"><input type="checkbox" id="pred"> Modo predicción: adiviná la MAC destino de cada trama antes de verla</label>
+        <span class="score" id="score"></span>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="section-head"><h2 style="margin:0">Qué ocurre en este paso</h2></div>
+        <div id="detail"></div>
+      </div>
+      <div>
+        <div class="card">
+          <div class="section-head"><h2 style="margin:0">Secuencia completa</h2><span class="muted small">Click para saltar</span></div>
+          <div class="steplist" id="steplist"></div>
+        </div>
+        <div class="card">
+          <div class="section-head"><h2 style="margin:0">Tramas que transportaron el datagrama</h2></div>
+          <div class="tw" id="hops"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head"><h2 style="margin:0">Estado de los dispositivos</h2><span class="muted small">Direcciones y caché ARP en el paso actual · en ámbar lo que cambió</span></div>
+      <div class="devs" id="devs"></div>
+    </div>
+  </section>
+
+  <section id="view-sum" hidden></section>
+</main>
+
+<script>
+'use strict';
+/* =====================================================================
+   1. MODELO DE RED
+   ===================================================================== */
+const BCAST = 'FF:FF:FF:FF:FF:FF', ZERO = '00:00:00:00:00:00', BUS_Y = 230;
+const LANS = {
+  L1:{ name:'LAN 1', net:'192.168.1.0/24', x1:40,  x2:324 },
+  L2:{ name:'LAN 2', net:'10.0.0.0/24',    x1:376, x2:624 },
+  L3:{ name:'LAN 3', net:'172.16.0.0/24',  x1:676, x2:970 }
+};
+const BASE = { nodes:{
+  A:{ id:'A', kind:'host', role:'Host', x:80,  y:80, gw:'192.168.1.1', arp:{}, ifs:[{n:'eth0', ip:'192.168.1.10', p:24, mac:'02:00:00:00:00:0A', lan:'L1'}] },
+  B:{ id:'B', kind:'host', role:'Host', x:190, y:80, gw:'192.168.1.1', arp:{}, ifs:[{n:'eth0', ip:'192.168.1.20', p:24, mac:'02:00:00:00:00:0B', lan:'L1'}] },
+  S:{ id:'S', kind:'host', role:'Servidor DHCP / RARP', x:290, y:80, gw:'192.168.1.1', arp:{}, ifs:[{n:'eth0', ip:'192.168.1.5', p:24, mac:'02:00:00:00:00:05', lan:'L1'}] },
+  R1:{ id:'R1', kind:'router', role:'Router', x:350, y:230, proxyArp:false, arp:{},
+       ifs:[{n:'e0', ip:'192.168.1.1', p:24, mac:'02:00:00:00:01:00', lan:'L1', side:'l'}, {n:'e1', ip:'10.0.0.1', p:24, mac:'02:00:00:00:01:01', lan:'L2', side:'r'}],
+       routes:[{net:'192.168.1.0',p:24,via:null,if:0},{net:'10.0.0.0',p:24,via:null,if:1},{net:'172.16.0.0',p:24,via:'10.0.0.2',if:1}] },
+  R2:{ id:'R2', kind:'router', role:'Router', x:650, y:230, proxyArp:false, arp:{},
+       ifs:[{n:'e0', ip:'10.0.0.2', p:24, mac:'02:00:00:00:02:00', lan:'L2', side:'l'}, {n:'e1', ip:'172.16.0.1', p:24, mac:'02:00:00:00:02:01', lan:'L3', side:'r'}],
+       routes:[{net:'172.16.0.0',p:24,via:null,if:1},{net:'10.0.0.0',p:24,via:null,if:0},{net:'192.168.1.0',p:24,via:'10.0.0.1',if:0}] },
+  C:{ id:'C', kind:'host', role:'Host', x:790, y:80, gw:'172.16.0.1', arp:{}, ifs:[{n:'eth0', ip:'172.16.0.10', p:24, mac:'02:00:00:00:00:0C', lan:'L3'}] },
+  D:{ id:'D', kind:'host', role:'Host (servidor DHCP remoto)', x:910, y:80, gw:'172.16.0.1', arp:{}, ifs:[{n:'eth0', ip:'172.16.0.20', p:24, mac:'02:00:00:00:00:0D', lan:'L3'}] }
+}};
+const IDS = Object.keys(BASE.nodes);
+const clone = o => JSON.parse(JSON.stringify(o));
+let PW = clone(BASE);                       // mundo persistente (cachés ARP entre simulaciones)
+
+/* utilidades IP */
+const ip2n = ip => ip.split('.').reduce((a, b) => a * 256 + (+b), 0);
+const n2ip = n => [Math.floor(n / 16777216) & 255, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.');
+const maskN = p => p === 0 ? 0 : (0xFFFFFFFF << (32 - p)) >>> 0;
+const netOf = (ip, p) => n2ip((ip2n(ip) & maskN(p)) >>> 0);
+const sameNet = (a, b, p) => netOf(a, p) === netOf(b, p);
+const validIp = s => /^(\d{1,3})(\.\d{1,3}){3}$/.test(s) && s.split('.').every(x => +x <= 255);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const isMac = s => /^[0-9A-F]{2}(:[0-9A-F]{2}){5}$/.test(s);
+
+function snapshot(W) {
+  const o = {};
+  IDS.forEach(id => { const n = W.nodes[id];
+    o[id] = { gw:n.gw || null, ifs:n.ifs.map(f => ({ ip:f.ip, p:f.p, mac:f.mac })), arp:{ ...n.arp } }; });
+  return o;
+}
+function lanMembers(W, lan) {
+  const r = [];
+  IDS.forEach(id => W.nodes[id].ifs.forEach((f, i) => { if (f.lan === lan) r.push({ id, i }); }));
+  return r;
+}
+function findMac(W, mac) { for (const id of IDS) { const i = W.nodes[id].ifs.findIndex(f => f.mac === mac); if (i >= 0) return { id, i }; } return null; }
+function findIp(W, ip) { for (const id of IDS) { const i = W.nodes[id].ifs.findIndex(f => f.ip === ip); if (i >= 0) return { id, i, mac:W.nodes[id].ifs[i].mac }; } return null; }
+function lbl(W, id, i = 0) { const n = W.nodes[id]; return n.kind === 'router' ? `${id}.${n.ifs[i].n}` : id; }
+function lookup(r, dst) {
+  let best = null;
+  r.routes.forEach((rt, k) => { if (sameNet(dst, rt.net, rt.p) && (!best || rt.p > best.p)) best = { ...rt, k }; });
+  return best;
+}
+function mkSim(W) { return { W, steps:[], init:snapshot(W) }; }
+function push(sim, s) { s.snap = snapshot(sim.W); sim.steps.push(s); return s; }
+function think(sim, at, title, html, kind) { return push(sim, { type:'think', at, kind:kind || 'think', title, html }); }
+
+/* constructores de capas (para mostrar las cabeceras) */
+const PROTO = { 1:'1 (ICMP)', 6:'6 (TCP)', 17:'17 (UDP)' };
+const ETYPE = { ip:'0x0800 (IPv4)', arp:'0x0806 (ARP)', rarp:'0x8035 (RARP)' };
+const eth = (dst, src, type, hl = {}) => ({ name:'Trama Ethernet II', fields:[['MAC destino', dst, hl.dst], ['MAC origen', src, hl.src], ['EtherType', type]], dstIdx:0 });
+const ipL = (p, hl = {}) => ({ name:'Cabecera IPv4', fields:[['Versión / IHL', '4 / 5'], ['TTL', p.ttl, hl.ttl], ['Protocolo', PROTO[p.proto] || p.proto], ['IP origen', p.src], ['IP destino', p.dst]] });
+const udpL = (s, d) => ({ name:'Segmento UDP', fields:[['Puerto origen', s], ['Puerto destino', d]] });
+const arpL = (o) => ({ name:o.name || 'Mensaje ARP', fields:[['Tipo de hardware', '1 (Ethernet)'], ['Tipo de protocolo', '0x0800 (IPv4)'], ['HLEN / PLEN', '6 / 4'], ['Operación', o.oper], ['SHA (MAC emisor)', o.sha], ['SPA (IP emisor)', o.spa], ['THA (MAC objetivo)', o.tha], ['TPA (IP objetivo)', o.tpa]] });
+const ICMP_T = { 0:'Echo Reply', 8:'Echo Request', 3:'Destination Unreachable', 11:'Time Exceeded' };
+const ICMP_C = { '3/0':'Network unreachable', '3/1':'Host unreachable', '11/0':'TTL exceeded in transit', '0/0':'—', '8/0':'—' };
+const icmpL = (t, c, extra = []) => ({ name:'Mensaje ICMP', fields:[['Tipo', `${t} (${ICMP_T[t]})`], ['Código', `${c} (${ICMP_C[t + '/' + c]})`], ['Checksum', 'calculado'], ...extra] });
+const dhcpL = (o) => ({ name:'Mensaje DHCP (formato BOOTP)', fields:[['op', o.op], ['Tipo (opción 53)', o.msg], ['xid', o.xid], ['ciaddr', o.ciaddr || '0.0.0.0'], ['yiaddr', o.yiaddr || '0.0.0.0'], ['giaddr', o.giaddr || '0.0.0.0'], ['chaddr', o.chaddr], ['Otras opciones', o.opts || '—']] });
+
+/* opciones de opción múltiple (modo predicción) */
+function rng(seed) { let a = seed * 2654435761 >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(arr, seed) { const r = rng(seed), a = arr.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(r() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function mkMcq(W, correct, finalIp, seed) {
+  const opts = [correct];
+  if (!opts.includes(BCAST)) opts.push(BCAST);
+  const fo = finalIp && findIp(W, finalIp);
+  if (fo && !opts.includes(fo.mac)) opts.push(fo.mac);
+  const all = []; IDS.forEach(id => W.nodes[id].ifs.forEach(f => all.push(f.mac)));
+  shuffle(all, seed + 7).forEach(m => { if (opts.length < 4 && !opts.includes(m)) opts.push(m); });
+  return { correct, options:shuffle(opts, seed + 1) };
+}
+
+/* =====================================================================
+   2. MOTOR: ARP + ENVÍO IP SALTO A SALTO
+   ===================================================================== */
+function routeTableHtml(r, chosenK) {
+  return `<table class="mini"><tr><th>Red destino</th><th>Siguiente salto</th><th>Interfaz</th></tr>` +
+    r.routes.map((rt, k) => `<tr class="${k === chosenK ? 'chosen' : ''}"><td class="m">${rt.net}/${rt.p}</td><td class="m">${rt.via || 'directa'}</td><td class="m">${r.ifs[rt.if].n}</td></tr>`).join('') + `</table>`;
+}
+
+function resolveARP(sim, id, ifIdx, targetIp, opt) {
+  const W = sim.W, n = W.nodes[id], f = n.ifs[ifIdx], me = lbl(W, id, ifIdx);
+  const cached = n.arp[targetIp];
+  if (cached) {
+    think(sim, id, `${id} consulta su caché ARP`, `<p><b>${id}</b> necesita la MAC de <code>${targetIp}</code> para armar la trama. La busca en su caché ARP y la encuentra: <code>${targetIp} → ${cached}</code>.</p><p>Como hay <b>acierto de caché</b>, no se envía ningún mensaje ARP (ahorra una difusión en la red). Las entradas caducan a los pocos minutos para tolerar cambios de placa o de IP.</p>`, 'arp');
+    return cached;
+  }
+  const members = lanMembers(W, f.lan).filter(m => !(m.id === id && m.i === ifIdx));
+  const target = members.find(m => W.nodes[m.id].ifs[m.i].ip === targetIp);
+  let proxy = null;
+  if (!target) proxy = members.find(m => { const r = W.nodes[m.id]; if (r.kind !== 'router' || !r.proxyArp) return false; const rt = lookup(r, targetIp); return rt && rt.if !== m.i; });
+  const resp = target || proxy;
+  const learn = [], to = [];
+  members.forEach(m => {
+    const mn = W.nodes[m.id];
+    const isResp = resp && m.id === resp.id && m.i === resp.i;
+    if (isResp && !proxy) { mn.arp[f.ip] = f.mac; learn.push(`${m.id} guarda en su caché: ${f.ip} → ${f.mac} (aprende al ver la solicitud)`); }
+    else if (mn.arp[f.ip]) { mn.arp[f.ip] = f.mac; learn.push(`${m.id} actualiza su entrada ${f.ip} → ${f.mac}`); }
+    to.push({ id:m.id, i:m.i, ok:!!isResp, note:isResp ? (proxy ? 'responde (proxy)' : 'es mi IP: responde') : 'no es mi IP: descarta' });
+  });
+  push(sim, { type:'tx', kind:'arp', tok:'ARP ?', lan:f.lan, from:{ id, i:ifIdx }, to, dstMac:BCAST,
+    title:`ARP Request: «¿quién tiene ${targetIp}?»`,
+    html:`<p><b>${me}</b> no tiene la MAC de <code>${targetIp}</code> en su caché. Envía una <b>difusión</b> (MAC destino <code>FF:FF:FF:FF:FF:FF</code>) preguntando a todos los de la ${LANS[f.lan].name}. El mensaje ARP viaja <b>directo dentro de la trama Ethernet</b> (EtherType 0x0806), sin cabecera IP.</p>
+      <p>El mensaje ya incluye el par (IP, MAC) del emisor para que el destinatario lo aprenda y no tenga que preguntar de vuelta. La difusión <b>no cruza routers</b>: ARP sólo funciona dentro de una red local.</p>`,
+    learn, layers:[eth(BCAST, f.mac, ETYPE.arp), arpL({ oper:'1 (solicitud)', sha:f.mac, spa:f.ip, tha:ZERO, tpa:targetIp })],
+    mcq:mkMcq(W, BCAST, null, sim.steps.length) });
+  if (!resp) {
+    think(sim, id, `Nadie responde al ARP`, `<p>Ningún dispositivo de la ${LANS[f.lan].name} tiene la IP <code>${targetIp}</code>, así que no llega ningún ARP Reply. <b>${id}</b> reintenta unas veces y, al agotar el tiempo, no puede construir la trama.</p><p>La capa IP declara el destino como <b>inalcanzable</b>${n.kind === 'router' ? ' y el router avisará al origen con un mensaje ICMP «Host unreachable»' : ' y avisa a la aplicación (error «host de destino inaccesible»)'}.</p>`, 'icmperr');
+    return null;
+  }
+  const rf = W.nodes[resp.id].ifs[resp.i];
+  n.arp[targetIp] = rf.mac;
+  push(sim, { type:'tx', kind:'arp', tok:'ARP !', lan:f.lan, from:{ id:resp.id, i:resp.i }, to:[{ id, i:ifIdx, ok:true, note:'aprende la MAC' }], dstMac:f.mac,
+    title:`ARP Reply: «${targetIp} está en ${rf.mac}»`,
+    html:`<p><b>${lbl(W, resp.id, resp.i)}</b> ${proxy ? `no es dueño de <code>${targetIp}</code>, pero sabe llegar a esa red por otra interfaz: hace <b>proxy ARP</b> y contesta con <b>su propia MAC</b>, de modo que el host le entregue a él las tramas.` : `es el dueño de <code>${targetIp}</code> y contesta por <b>unicast</b> (sólo a quien preguntó).`}</p>
+      <p><b>${me}</b> guarda <code>${targetIp} → ${rf.mac}</code> en su caché ARP y ya puede enviar la trama de datos.</p>`,
+    learn:[`${id} guarda en su caché: ${targetIp} → ${rf.mac}`], layers:[eth(f.mac, rf.mac, ETYPE.arp), arpL({ oper:'2 (respuesta)', sha:rf.mac, spa:targetIp, tha:f.mac, tpa:f.ip })],
+    mcq:mkMcq(W, f.mac, null, sim.steps.length) });
+  return rf.mac;
+}
+
+/* Envía un datagrama IP desde srcId hasta pkt.dst, resolviendo ARP y ruteando salto a salto */
+function sendIP(sim, srcId, pkt, opt = {}) {
+  const W = sim.W;
+  let curId = srcId, inIf = null, first = true, hop = 0, ttl = pkt.ttl;
+  const l4 = () => [].concat(pkt.l4());
+  for (let g = 0; g < 12; g++) {
+    const cur = W.nodes[curId];
+    const own = cur.ifs.findIndex(f => f.ip === pkt.dst);
+    if (!first && own >= 0) return { delivered:true, node:curId, ifIdx:own, ttl };
+    if (!first && cur.kind === 'host') { think(sim, curId, `${curId} descarta el paquete`, `<p>La IP destino <code>${pkt.dst}</code> no es de <b>${curId}</b> y los hosts no reenvían paquetes.</p>`); return { delivered:false, reason:'misdelivered' }; }
+    let out;
+    if (cur.kind === 'host') {
+      const f = cur.ifs[0];
+      if (!f.ip) { think(sim, curId, `${curId} no tiene IP`, `<p>Sin dirección IP no puede originar paquetes.</p>`); return { delivered:false, reason:'noip' }; }
+      const mask = n2ip(maskN(f.p)), myNet = netOf(f.ip, f.p), dNet = netOf(pkt.dst, f.p), loc = myNet === dNet;
+      think(sim, curId, `${curId} decide: ¿destino local o remoto?`,
+        `<p>${pkt.why || ''} Para saber a quién entregar la trama, <b>${curId}</b> aplica su máscara <code>${mask}</code> (/${f.p}) a la IP destino y a la suya:</p>
+         <p class="calc"><code>${pkt.dst} AND ${mask} = ${dNet}</code><br><code>${f.ip} AND ${mask} = ${myNet}</code></p>
+         <p>${loc ? `Coinciden → el destino está en <b>mi misma red</b>. Entrega directa: necesito la MAC de <code>${pkt.dst}</code>.`
+                  : `No coinciden → el destino está en <b>otra red</b>. Lo envío al <b>router por defecto</b> <code>${cur.gw}</code>: necesito la MAC <b>del gateway</b>, no la del destino final.`}</p>`);
+      if (!loc && !cur.gw) { think(sim, curId, 'Sin gateway configurado', `<p>No hay router por defecto: el paquete no puede salir de la red local.</p>`); return { delivered:false, reason:'nogw' }; }
+      out = { i:0, next:loc ? pkt.dst : cur.gw };
+    } else {
+      if (!first) {
+        ttl -= 1;
+        if (ttl <= 0) {
+          think(sim, curId, `${curId}: el TTL llega a 0`, `<p><b>${curId}</b> recibió el datagrama por ${lbl(W, curId, inIf)}, le resta 1 al TTL y obtiene <b>0</b>. Un router nunca reenvía un datagrama con TTL agotado: lo <b>descarta</b> (evita bucles de enrutamiento) y avisa al origen con ICMP «Time Exceeded».</p>`, 'icmperr');
+          let err = null;
+          if (!pkt.isErr) err = icmpError(sim, curId, inIf, pkt, 11, 0, 'Se agotó el TTL del datagrama (tipo 11, código 0).');
+          return { delivered:false, reason:'ttl', by:curId, byIp:cur.ifs[inIf].ip, err };
+        }
+      }
+      const r = lookup(cur, pkt.dst);
+      think(sim, curId, first ? `${curId} genera el paquete y consulta su tabla de rutas` : `${curId} reenvía: decrementa TTL y consulta su tabla de rutas`,
+        `<p>${first ? (pkt.why || `<b>${curId}</b> origina este paquete.`) : `<b>${curId}</b> recibió la trama por ${lbl(W, curId, inIf)}, comprobó que la MAC destino era la suya y desencapsuló el datagrama. La IP destino (<code>${pkt.dst}</code>) <b>no es suya</b>, así que debe reenviarlo. Resta 1 al TTL: <code>${ttl + 1} → ${ttl}</code>.`}</p>
+         <p>Busca <code>${pkt.dst}</code> en su tabla de rutas (coincidencia más específica):</p>${routeTableHtml(cur, r ? r.k : -1)}
+         <p>${r ? (r.via ? `La ruta elegida no es directa: siguiente salto <code>${r.via}</code> (otro router). Necesito la MAC de <b>ese router</b>.` : `Red conectada directamente: el destino está en la ${LANS[cur.ifs[r.if].lan].name}. Necesito la MAC <b>del destino final</b>.`) : `<b>No hay ninguna ruta</b> que coincida.`}</p>`);
+      if (!r) {
+        let err = null;
+        if (!pkt.isErr) err = icmpError(sim, curId, inIf == null ? 0 : inIf, pkt, 3, 0, 'No existe ruta hacia la red destino (tipo 3, código 0).');
+        return { delivered:false, reason:'noroute', by:curId, err };
+      }
+      out = { i:r.if, next:r.via || pkt.dst };
+    }
+    const mac = resolveARP(sim, curId, out.i, out.next, opt);
+    if (!mac) {
+      let err = null;
+      if (cur.kind === 'router' && !pkt.isErr) err = icmpError(sim, curId, inIf == null ? 0 : inIf, pkt, 3, 1, 'El router no logró resolver la MAC del destino por ARP (tipo 3, código 1).');
+      return { delivered:false, reason:'arp', by:curId, byIp:inIf != null ? cur.ifs[inIf].ip : null, err };
+    }
+    const f = cur.ifs[out.i], rcv = findMac(W, mac);
+    const hl = hop > 0 ? { src:true, dst:true, ttl:ttl !== pkt.ttl } : {};
+    const who = lbl(W, rcv.id, rcv.i);
+    push(sim, { type:'tx', kind:pkt.kind || 'ip', tok:pkt.tok || 'IP', lan:f.lan, from:{ id:curId, i:out.i }, to:[{ id:rcv.id, i:rcv.i, ok:true, note:rcv.id === findIp(W, pkt.dst)?.id ? 'destino final' : 'siguiente salto' }], dstMac:mac,
+      title:`${lbl(W, curId, out.i)} → ${who}: ${pkt.name}`,
+      html:`<p>Trama en la ${LANS[f.lan].name}. ${out.next !== pkt.dst ? `La <b>MAC destino</b> es la del siguiente salto (<b>${who}</b>), aunque la <b>IP destino</b> siga siendo la del destino final <code>${pkt.dst}</code>.` : `El destino IP está en esta red: la MAC destino es la del destino final (<b>${who}</b>).`}</p>
+        <p>${hop === 0 ? 'Esta es la primera trama: sus direcciones MAC y su TTL servirán de comparación con los saltos siguientes.' : '<b>Lo que cambió respecto del salto anterior:</b> MAC origen y MAC destino (se reescriben en cada red) y el TTL (−1 por router). Las IP origen y destino <b>no cambian</b>.'}</p>`,
+      layers:[eth(mac, f.mac, ETYPE.ip, hl), ipL({ ...pkt, ttl }, hl), ...l4()],
+      hop:{ lan:LANS[f.lan].name, from:lbl(W, curId, out.i), to:who, smac:f.mac, dmac:mac, sip:pkt.src, dip:pkt.dst, ttl, name:pkt.name },
+      mcq:mkMcq(W, mac, pkt.dst, sim.steps.length) });
+    curId = rcv.id; inIf = rcv.i; first = false; hop++;
+  }
+  return { delivered:false, reason:'loop' };
+}
+
+function icmpError(sim, rid, ingIf, orig, type, code, why) {
+  const r = sim.W.nodes[rid], srcIp = r.ifs[ingIf].ip;
+  const err = { src:srcIp, dst:orig.src, ttl:64, proto:1, kind:'icmperr', tok:'ICMP', isErr:true, name:`ICMP ${ICMP_T[type]}`,
+    why:`${why} Debe informar al origen (<code>${orig.src}</code>) con un mensaje ICMP: se encapsula en un datagrama IP (protocolo 1) cuya IP origen es la de la interfaz de entrada, <code>${srcIp}</code>.`,
+    l4:() => icmpL(type, code, [['Datos', 'Cabecera IP original + primeros 8 bytes del datagrama que causó el error']]) };
+  return sendIP(sim, rid, err);
+}
+
+/* =====================================================================
+   3. ESCENARIOS
+   ===================================================================== */
+const hostOpts = ids => ids.map(id => [id, `${id} (${BASE.nodes[id].ifs[0].ip})`]);
+const ALLH = ['A', 'B', 'S', 'C', 'D'];
+const udpPkt = (src, dst, ttl, extra = {}) => ({ src, dst, ttl, proto:17, kind:'ip', tok:'UDP', name:'Datagrama UDP', l4:() => udpL(49152, 5000), ...extra });
+const SC = {};
+
+/* ---------- 1. Viaje del paquete ---------- */
+SC.route = {
+  label:'1. Viaje del paquete', title:'Un paquete atraviesa routers: ARP en cada salto',
+  intro:'Un host envía un datagrama a otro host de una red remota. Observá que la <b>IP origen/destino no cambia</b> de punta a punta, mientras que las <b>MAC se reescriben en cada red</b> y cada router decrementa el TTL. Cada MAC se descubre con ARP.',
+  fields:[
+    { id:'src', label:'Origen', type:'select', opts:hostOpts(ALLH), def:'A' },
+    { id:'dst', label:'Destino', type:'select', opts:hostOpts(ALLH), def:'D' },
+    { id:'ttl', label:'TTL inicial', type:'number', def:64, min:1, max:255 }
+  ],
+  presets:[ { label:'A → D (tres redes, dos routers)', cfg:{ src:'A', dst:'D', ttl:64 } }, { label:'A → B (misma LAN, sin routers)', cfg:{ src:'A', dst:'B', ttl:64 } }, { label:'C → B (sentido inverso)', cfg:{ src:'C', dst:'B', ttl:64 } }, { label:'A → D con TTL 2 (muere en R2)', cfg:{ src:'A', dst:'D', ttl:2 } } ],
+  gen(sim, cfg) {
+    const W = sim.W, s = W.nodes[cfg.src], d = W.nodes[cfg.dst];
+    if (cfg.src === cfg.dst) { think(sim, cfg.src, 'Origen y destino iguales', '<p>Elegí dos dispositivos distintos.</p>'); return; }
+    const same = s.ifs[0].lan === d.ifs[0].lan, ttl = Math.max(1, Math.min(255, +cfg.ttl || 64));
+    think(sim, cfg.src, `${cfg.src} quiere enviar un datagrama a ${cfg.dst}`,
+      `<p>Una aplicación de <b>${cfg.src}</b> entrega a la capa IP un datagrama destinado a <code>${d.ifs[0].ip}</code>. IP trabaja con direcciones IP, pero la placa Ethernet sólo envía tramas con una <b>MAC destino</b> concreta, así que alguien tiene que averiguar esa MAC.</p>
+       <p>${same ? 'Origen y destino están en la <b>misma red</b>: no hay routers de por medio.' : `Origen y destino están en redes distintas (<b>${LANS[s.ifs[0].lan].name}</b> y <b>${LANS[d.ifs[0].lan].name}</b>): el datagrama pasará por routers, y en cada red hará falta la MAC del siguiente salto.`} Las cachés ARP ${$('#clr').checked ? 'empiezan vacías' : 'conservan lo aprendido en simulaciones anteriores'}.</p>`);
+    const r = sendIP(sim, cfg.src, udpPkt(s.ifs[0].ip, d.ifs[0].ip, ttl));
+    if (r.delivered) {
+      const nArp = sim.steps.filter(x => x.kind === 'arp' && x.type === 'tx').length;
+      think(sim, cfg.dst, `${cfg.dst} recibe el datagrama`,
+        `<p>La MAC destino es la suya y la IP destino también: desencapsula y entrega el segmento a UDP. El camino completo fueron <b>${sim.steps.filter(x => x.hop).length} trama(s)</b> de datos${nArp ? ` precedidas por <b>${nArp} mensajes ARP</b>` : ' (todo estaba en caché: no hizo falta ARP)'}.</p>
+         <p>Mirá la tabla «Tramas que transportaron el datagrama»: IP origen e IP destino son iguales en todas las filas; las MAC y el TTL cambian.</p>`);
+    }
+  },
+  theory:`<p><b>Direccionamiento en dos niveles.</b> La dirección IP identifica al host de extremo a extremo; la dirección MAC sólo tiene sentido dentro de una red local (salto a salto). Para ir de A a D, A no necesita la MAC de D: necesita la de su <b>router por defecto</b>.</p>
+  <ul><li><b>Host:</b> aplica la máscara. Si el destino está en su red → ARP por la IP del destino. Si no → ARP por la IP del gateway.</li>
+  <li><b>Router:</b> recibe la trama, comprueba que la MAC destino es suya, desencapsula, decrementa el TTL (y recalcula el checksum de cabecera), busca en la tabla de rutas y vuelve a encapsular en una trama <i>nueva</i> hacia el siguiente salto, resolviendo su MAC con ARP si hace falta.</li>
+  <li><b>Último router:</b> el destino está en una red conectada directamente, así que hace ARP por la IP del <i>destino final</i>.</li>
+  <li><b>Caché ARP:</b> evita repetir la difusión. Además cada solicitud enseña al destinatario la MAC del que preguntó; por eso el camino de vuelta normalmente no necesita nuevos ARP.</li></ul>
+  <p>Probá desmarcar «Vaciar las cachés» y simular dos veces seguidas: la segunda vez sólo aparecen aciertos de caché.</p>`
+};
+
+/* ---------- 2. ARP ---------- */
+SC.arp = {
+  label:'2. ARP', title:'ARP: resolución de direcciones IP → MAC',
+  intro:'ARP (RFC 826) permite que un dispositivo averigüe la MAC que corresponde a una IP de <b>su misma red local</b>. Probá la resolución normal, qué pasa si la IP no existe, el ARP gratuito (anuncio) y el proxy ARP.',
+  fields:[
+    { id:'variant', label:'Variante', type:'select', opts:[['normal', 'Resolución normal'], ['timeout', 'IP inexistente (sin respuesta)'], ['gratuito', 'ARP gratuito (cambio de placa)'], ['proxy', 'Proxy ARP (R1 contesta por D)']], def:'normal' },
+    { id:'src', label:'Quien pregunta', type:'select', opts:hostOpts(['A', 'B', 'S']), def:'A' },
+    { id:'dst', label:'IP buscada', type:'text', def:'192.168.1.20', show:c => c.variant !== 'gratuito' }
+  ],
+  presets:[ { label:'A busca a B', cfg:{ variant:'normal', src:'A', dst:'192.168.1.20' } }, { label:'A busca una IP que no existe', cfg:{ variant:'timeout', src:'A', dst:'192.168.1.99' } }, { label:'ARP gratuito de A', cfg:{ variant:'gratuito', src:'A' } }, { label:'Proxy ARP: A busca a D', cfg:{ variant:'proxy', src:'A', dst:'172.16.0.20' } } ],
+  noCommit:c => c.variant === 'gratuito' || c.variant === 'proxy',
+  gen(sim, cfg) {
+    const W = sim.W, s = W.nodes[cfg.src], sf = s.ifs[0];
+    if (cfg.variant === 'gratuito') {
+      const seeded = cfg.src === 'A' ? 'B' : 'A', sn = W.nodes[seeded], oldMac = sf.mac, newMac = '02:00:00:00:99:' + oldMac.slice(-2);
+      sn.arp[sf.ip] = oldMac; sim.init = snapshot(W);
+      think(sim, cfg.src, 'Situación previa', `<p><b>${seeded}</b> ya tenía en su caché ARP la entrada <code>${sf.ip} → ${oldMac}</code> (de una comunicación anterior). Los demás dispositivos no tienen entrada para <b>${cfg.src}</b>.</p>`, 'arp');
+      sf.mac = newMac;
+      think(sim, cfg.src, `${cfg.src} cambia de placa de red`, `<p>Se reemplaza la placa de <b>${cfg.src}</b>: ahora su MAC es <code>${newMac}</code>, pero conserva la IP <code>${sf.ip}</code>. Las cachés ajenas quedaron <b>desactualizadas</b> (hasta que la entrada caduque, las tramas se perderían).</p><p>Para evitarlo, al arrancar o cambiar de MAC el host envía un <b>ARP gratuito</b>: una solicitud sobre su <i>propia</i> IP, que no espera respuesta.</p>`, 'arp');
+      const to = lanMembers(W, 'L1').filter(m => m.id !== cfg.src).map(m => ({ id:m.id, i:m.i, ok:m.id === seeded ? 'upd' : false, note:m.id === seeded ? 'actualiza su caché' : 'sin entrada: la ignora' }));
+      sn.arp[sf.ip] = newMac;
+      push(sim, { type:'tx', kind:'arp', tok:'ARP ?', lan:'L1', from:{ id:cfg.src, i:0 }, to, dstMac:BCAST, title:`ARP gratuito: «${sf.ip} ahora está en ${newMac}»`,
+        html:`<p>Solicitud ARP <b>difundida</b> donde <b>IP emisor = IP objetivo</b> (<code>${sf.ip}</code>). Nadie contestará: no es una pregunta, es un anuncio.</p><p>Los dispositivos que <b>ya tenían</b> una entrada para esa IP la actualizan (${seeded}); los que no, la ignoran. Un efecto colateral útil: si <i>alguien contesta</i>, hay una IP duplicada en la red.</p>`,
+        learn:[`${seeded} actualiza: ${sf.ip} → ${newMac} (antes ${oldMac})`], layers:[eth(BCAST, newMac, ETYPE.arp), arpL({ oper:'1 (solicitud)', sha:newMac, spa:sf.ip, tha:ZERO, tpa:sf.ip })], mcq:mkMcq(W, BCAST, null, sim.steps.length) });
+      think(sim, seeded, `${seeded} vuelve a escribirle a ${cfg.src}`, `<p>Ahora <b>${seeded}</b> envía un datagrama a <code>${sf.ip}</code>. Su caché ya tiene la MAC nueva, así que <b>no hace falta ARP</b> y la trama llega bien.</p>`, 'arp');
+      sendIP(sim, seeded, udpPkt(sn.ifs[0].ip, sf.ip, 64));
+      return;
+    }
+    if (!validIp(cfg.dst)) { think(sim, cfg.src, 'IP inválida', `<p>«${esc(cfg.dst)}» no es una dirección IPv4 válida.</p>`); return; }
+    if (cfg.dst === sf.ip) { think(sim, cfg.src, 'IP propia', '<p>Elegí una IP distinta de la del propio host.</p>'); return; }
+    if (cfg.variant === 'proxy') {
+      W.nodes.R1.proxyArp = true; sf.p = 0; sim.init = snapshot(W);
+      think(sim, cfg.src, 'Configuración particular de esta variante', `<p><b>${cfg.src}</b> está mal configurado: tiene máscara <code>0.0.0.0</code>, así que cree que <i>todas</i> las IP están en su red local. <b>R1</b> tiene habilitado <b>proxy ARP</b>: contesta ARP por IP que sabe alcanzar por otra interfaz.</p><p>Resultado: ${cfg.src} no necesita saber que existe un gateway; el router se "hace pasar" por los hosts remotos.</p>`, 'arp');
+    } else {
+      think(sim, cfg.src, `${cfg.src} quiere comunicarse con ${cfg.dst}`, `<p>Conoce la IP <code>${cfg.dst}</code> (por ejemplo, la resolvió un DNS) pero no su MAC. Antes de poder enviar la trama, ARP debe resolverla.</p>`, 'arp');
+    }
+    sendIP(sim, cfg.src, udpPkt(sf.ip, cfg.dst, 64));
+  },
+  theory:`<p><b>El problema.</b> Las capas superiores usan direcciones IP; la placa Ethernet sólo entiende MAC de 48 bits. Tanenbaum plantea las alternativas (tablas de configuración en cada host, o direcciones MAC derivadas de la IP) y explica por qué se usa ARP: es dinámico y no exige configuración.</p>
+  <ul><li><b>Solicitud:</b> difusión Ethernet (FF:FF:FF:FF:FF:FF): «¿Quién tiene la IP X? Que le diga a Y (IP, MAC)».</li>
+  <li><b>Respuesta:</b> sólo el dueño de X contesta, por <b>unicast</b>, con su MAC.</li>
+  <li><b>Caché:</b> el resultado se guarda con tiempo de vida (minutos). Optimizaciones: el mensaje lleva el par IP/MAC del emisor, que el destinatario aprende; los demás actualizan entradas que ya tenían.</li>
+  <li><b>ARP gratuito:</b> el host anuncia su propia IP al arrancar o al cambiar de MAC; sirve para refrescar cachés y detectar IP duplicadas.</li>
+  <li><b>Proxy ARP:</b> un router contesta por hosts de otra red con su propia MAC (útil con subredes o hosts sin gateway configurado).</li>
+  <li><b>Entre redes:</b> la difusión no atraviesa routers, así que ARP sólo resuelve direcciones de la red local. Para un destino remoto, el host hace ARP del <i>gateway</i>.</li></ul>
+  <p>ARP <b>no viaja dentro de IP</b>: el mensaje va directamente en la trama Ethernet (EtherType 0x0806); por eso funciona aunque el host todavía no tenga IP.</p>`
+};
+
+/* ---------- 3. RARP ---------- */
+SC.rarp = {
+  label:'3. RARP', title:'RARP: de la MAC a la IP',
+  intro:'RARP (RFC 903) resuelve el problema inverso: una estación sin disco conoce su MAC (viene en la placa) pero no su IP. Probá con el servidor en la misma LAN y en otra LAN para ver su limitación principal.',
+  fields:[
+    { id:'client', label:'Cliente sin IP', type:'select', opts:hostOpts(['A', 'B']), def:'A' },
+    { id:'where', label:'Servidor RARP', type:'select', opts:[['local', 'En la misma LAN (S)'], ['remoto', 'En otra LAN (D, detrás de los routers)']], def:'local' },
+    { id:'entry', label:'', type:'checkbox', text:'La MAC del cliente está en la tabla del servidor', def:true }
+  ],
+  presets:[ { label:'Servidor en la misma LAN', cfg:{ client:'A', where:'local', entry:true } }, { label:'Servidor en otra LAN', cfg:{ client:'A', where:'remoto', entry:true } }, { label:'MAC no registrada', cfg:{ client:'B', where:'local', entry:false } } ],
+  noCommit:() => true,
+  gen(sim, cfg) {
+    const W = sim.W, c = W.nodes[cfg.client], cf = c.ifs[0], own = cf.ip, here = cfg.where === 'local';
+    cf.ip = null; c.gw = null; sim.init = snapshot(W);
+    think(sim, cfg.client, `${cfg.client} arranca sin dirección IP`, `<p>Un equipo sin disco no puede leer su IP de un archivo de configuración. Sólo conoce su <b>MAC</b> <code>${cf.mac}</code>, fija en la placa. Debe preguntar en la red: «esta es mi MAC, ¿cuál es mi IP?».</p>`, 'rarp');
+    const to = lanMembers(W, 'L1').filter(m => m.id !== cfg.client).map(m => ({ id:m.id, i:m.i, ok:here && m.id === 'S', note:m.id === 'S' ? (here ? 'servidor RARP: procesa' : 'no es servidor: descarta') : (m.id === 'R1' ? 'router: no reenvía difusiones' : 'no es servidor: descarta') }));
+    push(sim, { type:'tx', kind:'rarp', tok:'RARP ?', lan:'L1', from:{ id:cfg.client, i:0 }, to, dstMac:BCAST, title:`RARP Request: «mi MAC es ${cf.mac}, ¿cuál es mi IP?»`,
+      html:`<p>El cliente <b>difunde</b> una solicitud RARP (EtherType <code>0x8035</code>, operación 3). Como no tiene IP, el mensaje no puede ir en un datagrama IP: va <b>directamente sobre Ethernet</b>. Los campos de IP quedan vacíos.</p><p>Sólo un <b>servidor RARP</b> que esté en esta misma red física responderá; los demás descartan el mensaje.</p>`,
+      layers:[eth(BCAST, cf.mac, ETYPE.rarp), arpL({ name:'Mensaje RARP', oper:'3 (solicitud RARP)', sha:cf.mac, spa:'(desconocida)', tha:cf.mac, tpa:'(la busca: «¿cuál es mi IP?»)' })], mcq:mkMcq(W, BCAST, null, sim.steps.length) });
+    if (!here) {
+      think(sim, 'R1', 'R1 no reenvía la difusión', `<p>El servidor está en la ${LANS.L3.name}, pero <b>los routers no reenvían tramas de difusión</b> ni entienden RARP (es un protocolo de capa de enlace, sin cabecera IP que rutear). La solicitud muere en la ${LANS.L1.name}.</p>`, 'icmperr');
+      think(sim, cfg.client, 'Sin respuesta: el cliente no puede arrancar', `<p>Tras varios reintentos, <b>${cfg.client}</b> sigue sin IP. <b>Limitación clave de RARP:</b> requiere un servidor en <b>cada red local</b>. Esto motivó a BOOTP (que usa UDP/IP y agentes de retransmisión) y luego a DHCP.</p>`, 'icmperr');
+      return;
+    }
+    const tbl = `<table class="mini"><tr><th>MAC</th><th>IP</th></tr>${['A', 'B'].filter(x => cfg.entry || x !== cfg.client).map(x => `<tr class="${x === cfg.client ? 'chosen' : ''}"><td class="m">${BASE.nodes[x].ifs[0].mac}</td><td class="m">${BASE.nodes[x].ifs[0].ip}</td></tr>`).join('')}</table>`;
+    if (!cfg.entry) {
+      think(sim, 'S', 'S no encuentra la MAC en su tabla', `<p>El servidor busca <code>${cf.mac}</code> en su tabla de correspondencias (la configuró un administrador a mano):</p>${tbl}<p>No hay entrada: <b>no responde</b>. RARP no asigna direcciones dinámicamente; sólo consulta una tabla estática.</p>`, 'rarp');
+      think(sim, cfg.client, 'Sin respuesta', `<p>El cliente agota los reintentos y no puede configurarse.</p>`, 'icmperr');
+      return;
+    }
+    think(sim, 'S', 'S busca la MAC en su tabla', `<p>El servidor RARP consulta su tabla estática:</p>${tbl}<p>Encuentra <code>${cf.mac} → ${own}</code> y prepara la respuesta.</p>`, 'rarp');
+    const sf = W.nodes.S.ifs[0]; cf.ip = own;
+    push(sim, { type:'tx', kind:'rarp', tok:'RARP !', lan:'L1', from:{ id:'S', i:0 }, to:[{ id:cfg.client, i:0, ok:true, note:'conoce su IP' }], dstMac:cf.mac, title:`RARP Reply: «tu IP es ${own}»`,
+      html:`<p>El servidor contesta por <b>unicast</b> a la MAC del cliente (operación 4). En el campo «IP objetivo» va la dirección asignada. Ahora <b>${cfg.client}</b> ya tiene IP.</p>`,
+      layers:[eth(cf.mac, sf.mac, ETYPE.rarp), arpL({ name:'Mensaje RARP', oper:'4 (respuesta RARP)', sha:sf.mac, spa:sf.ip, tha:cf.mac, tpa:own })], mcq:mkMcq(W, cf.mac, null, sim.steps.length) });
+    think(sim, cfg.client, 'Limitaciones de RARP', `<p><b>${cfg.client}</b> conoce su IP, pero RARP <b>no entrega máscara, gateway ni DNS</b>: sin gateway no podrá hablar con otras redes. Además necesita un servidor por red y una tabla manual. DHCP resuelve todo esto (pestaña siguiente).</p>`, 'rarp');
+  },
+  theory:`<p><b>Idea.</b> RARP (<i>Reverse ARP</i>) hace lo opuesto a ARP: parte de una MAC conocida y pide una IP. Pensado para estaciones sin disco que arrancaban por red (Tanenbaum lo presenta como antecedente de BOOTP y DHCP).</p>
+  <ul><li>Usa el mismo formato de mensaje que ARP, con operaciones 3 (solicitud) y 4 (respuesta), y EtherType propio <code>0x8035</code>.</li>
+  <li>Se difunde a nivel de enlace: <b>no atraviesa routers</b> → hace falta un servidor RARP en cada LAN.</li>
+  <li>El servidor es una tabla manual MAC → IP, y sólo devuelve la IP (sin máscara, gateway ni servidor de nombres).</li>
+  <li>Al no usar IP/UDP, es incómodo de implementar como un proceso de usuario normal.</li></ul>
+  <p>Hoy está obsoleto: lo reemplazó BOOTP (UDP/IP, con agentes de retransmisión) y finalmente DHCP.</p>`
+};
+
+/* ---------- 4. DHCP ---------- */
+SC.dhcp = {
+  label:'4. DHCP', title:'DHCP: configuración automática de un host',
+  intro:'Un host recién conectado obtiene IP, máscara, gateway y DNS mediante el intercambio <b>DISCOVER → OFFER → REQUEST → ACK</b>. DHCP sí viaja sobre IP (en UDP, puertos 67/68), aunque al comienzo el cliente use <code>0.0.0.0</code>. Probá con el servidor en la misma LAN o en otra, atendido por un <b>agente de retransmisión</b> (relay) en R1.',
+  fields:[
+    { id:'client', label:'Cliente nuevo', type:'select', opts:hostOpts(['A', 'B']), def:'A' },
+    { id:'where', label:'Servidor DHCP', type:'select', opts:[['local', 'En la misma LAN (S)'], ['relay', 'En otra LAN (D) vía relay en R1']], def:'local' },
+    { id:'probe', label:'', type:'checkbox', text:'Mostrar ARP probe / anuncio', def:true },
+    { id:'renew', label:'', type:'checkbox', text:'Mostrar renovación (T1)', def:false }
+  ],
+  presets:[ { label:'Servidor en la misma LAN', cfg:{ client:'A', where:'local', probe:true, renew:false } }, { label:'Servidor remoto con relay', cfg:{ client:'A', where:'relay', probe:false, renew:false } }, { label:'Con renovación de la concesión', cfg:{ client:'B', where:'local', probe:false, renew:true } } ],
+  noCommit:() => true,
+  gen(sim, cfg) {
+    const W = sim.W, cid = cfg.client, c = W.nodes[cid], cf = c.ifs[0], relay = cfg.where === 'relay';
+    const sid = relay ? 'D' : 'S', srv = W.nodes[sid], sf = srv.ifs[0], mymac = cf.mac;
+    const offered = cid === 'A' ? '192.168.1.100' : '192.168.1.101', xid = '0x3903F326', mask = '255.255.255.0', gwIp = '192.168.1.1', dns = '8.8.8.8', lease = '86400 s (24 h)';
+    cf.ip = null; c.gw = null; sim.init = snapshot(W);
+    const members = () => lanMembers(W, 'L1').filter(m => m.id !== cid);
+    const bcast = (msg, title, html, opts) => push(sim, { type:'tx', kind:'dhcp', tok:'DHCP', lan:'L1', from:{ id:cid, i:0 }, dstMac:BCAST, title, html,
+      to:members().map(m => { const isS = !relay && m.id === 'S', isR = relay && m.id === 'R1'; return { id:m.id, i:m.i, ok:isS || isR, note:isS ? 'servidor DHCP: procesa' : isR ? 'relay agent: procesa' : (m.id === 'R1' ? 'router: no reenvía difusiones' : 'no es servidor: descarta') }; }),
+      layers:[eth(BCAST, mymac, ETYPE.ip), ipL({ src:'0.0.0.0', dst:'255.255.255.255', ttl:128, proto:17 }), udpL(68, 67), dhcpL({ op:'1 (BOOTREQUEST)', msg, xid, chaddr:mymac, opts })], mcq:mkMcq(W, BCAST, null, sim.steps.length) });
+    const uni = (msg, title, html, opts) => push(sim, { type:'tx', kind:'dhcp', tok:'DHCP', lan:'L1', from:{ id:'S', i:0 }, to:[{ id:cid, i:0, ok:true, note:'procesa' }], dstMac:mymac, title, html,
+      layers:[eth(mymac, sf.mac, ETYPE.ip), ipL({ src:sf.ip, dst:offered, ttl:64, proto:17 }), udpL(67, 68), dhcpL({ op:'2 (BOOTREPLY)', msg, xid, yiaddr:offered, chaddr:mymac, opts })], mcq:mkMcq(W, mymac, offered, sim.steps.length) });
+    const relayUp = (msg, opts) => {
+      think(sim, 'R1', `R1 (relay) reenvía el ${msg} al servidor`, `<p>R1 está configurado como <b>agente de retransmisión DHCP</b>. Recibió la difusión UDP al puerto 67, completa el campo <b>giaddr</b> con la IP de la interfaz por la que llegó (<code>${gwIp}</code>) y la convierte en un datagrama <b>unicast</b> hacia el servidor <code>${sf.ip}</code>, que ya se puede rutear. Así un único servidor atiende muchas redes.</p>`, 'dhcp');
+      return sendIP(sim, 'R1', { src:gwIp, dst:sf.ip, ttl:64, proto:17, kind:'dhcp', tok:'DHCP', name:`DHCP ${msg} (reenviado por el relay)`, why:`El relay genera el datagrama unicast.`,
+        l4:() => [udpL(67, 67), dhcpL({ op:'1 (BOOTREQUEST)', msg, xid, giaddr:gwIp, chaddr:mymac, opts })] });
+    };
+    const relayDown = (msg, opts) => {
+      sendIP(sim, 'D', { src:sf.ip, dst:gwIp, ttl:64, proto:17, kind:'dhcp', tok:'DHCP', name:`DHCP ${msg} hacia el relay`, why:`El servidor responde a la dirección <code>giaddr</code> (el relay), no al cliente, que aún no tiene IP.`,
+        l4:() => [udpL(67, 67), dhcpL({ op:'2 (BOOTREPLY)', msg, xid, yiaddr:offered, giaddr:gwIp, chaddr:mymac, opts })] });
+      const r1f = W.nodes.R1.ifs[0];
+      push(sim, { type:'tx', kind:'dhcp', tok:'DHCP', lan:'L1', from:{ id:'R1', i:0 }, to:[{ id:cid, i:0, ok:true, note:'procesa' }], dstMac:mymac, title:`R1 entrega el ${msg} al cliente`,
+        html:`<p>El relay sabe a quién va dirigido por el campo <b>chaddr</b>: lo entrega por unicast a esa MAC dentro de la ${LANS.L1.name} (no puede usar ARP: el cliente todavía no tiene IP).</p>`,
+        layers:[eth(mymac, r1f.mac, ETYPE.ip), ipL({ src:gwIp, dst:offered, ttl:64, proto:17 }), udpL(67, 68), dhcpL({ op:'2 (BOOTREPLY)', msg, xid, yiaddr:offered, giaddr:gwIp, chaddr:mymac, opts })], mcq:mkMcq(W, mymac, offered, sim.steps.length) });
+    };
+    const optOffer = `53=2 (Offer) · 54=${sf.ip} (id servidor) · 51=${lease} · 1=${mask} · 3=${gwIp} · 6=${dns}`;
+    const optAck = optOffer.replace('53=2 (Offer)', '53=5 (ACK)');
+
+    think(sim, cid, `${cid} se conecta a la red: estado INIT`, `<p>El cliente no tiene IP, ni conoce la dirección del servidor, ni la de su gateway. Sólo sabe su MAC. No puede usar ARP (no tiene IP propia) ni unicast: debe usar la <b>difusión limitada</b>: IP origen <code>0.0.0.0</code>, IP destino <code>255.255.255.255</code>, MAC destino <code>FF:FF:FF:FF:FF:FF</code>.</p>`, 'dhcp');
+    bcast('DISCOVER', 'DHCPDISCOVER: «¿hay algún servidor DHCP?»', `<p>Mensaje UDP del puerto 68 (cliente) al 67 (servidor). El identificador de transacción <b>xid</b> permite relacionar las respuestas con esta solicitud; <b>chaddr</b> identifica al cliente.</p>`, '53=1 (Discover)');
+    if (!relay) {
+      think(sim, 'S', 'S elige una dirección del pool', `<p>El servidor DHCP tiene un rango de direcciones libres (<code>192.168.1.100 – 192.168.1.150</code>) para esta red. Reserva provisoriamente <code>${offered}</code> para este cliente.</p>`, 'dhcp');
+      uni('OFFER', `DHCPOFFER: «te ofrezco ${offered}»`, `<p>El servidor propone la configuración (<b>yiaddr</b> = IP ofrecida). Como el cliente todavía no tiene IP, la trama se envía a su MAC (<b>chaddr</b>) y no hay ARP. Si hubiera varios servidores, el cliente recibiría varias ofertas.</p>`, optOffer);
+    } else {
+      relayUp('DISCOVER', '53=1 (Discover)');
+      think(sim, 'D', 'D elige el ámbito según giaddr', `<p>El servidor recibe el mensaje y mira <b>giaddr</b> = <code>${gwIp}</code>: sabe que el cliente está en la red <code>192.168.1.0/24</code> y toma una IP del <b>ámbito</b> correspondiente (<code>192.168.1.100 – 150</code>). Ofrecer una IP de la red del servidor (172.16.0.0/24) sería inútil.</p>`, 'dhcp');
+      relayDown('OFFER', optOffer);
+    }
+    bcast('REQUEST', `DHCPREQUEST: «acepto ${offered} de ${sf.ip}»`, `<p>El cliente elige una oferta y la <b>solicita formalmente</b>. Lo hace por <b>difusión</b>, incluyendo el identificador del servidor elegido (opción 54), para que los demás servidores sepan que su oferta fue rechazada y liberen la dirección reservada.</p>`, `53=3 (Request) · 50=${offered} (IP pedida) · 54=${sf.ip} (servidor elegido)`);
+    if (!relay) {
+      think(sim, 'S', 'S confirma la concesión', `<p>El servidor registra que <code>${offered}</code> queda asignada a <code>${mymac}</code> durante ${lease} (<b>lease</b>).</p>`, 'dhcp');
+      uni('ACK', 'DHCPACK: «confirmado, es tuya por 24 h»', `<p>El servidor confirma la configuración completa: IP, máscara, gateway, DNS y tiempo de concesión.</p>`, optAck);
+    } else {
+      relayUp('REQUEST', `53=3 (Request) · 50=${offered} · 54=${sf.ip}`);
+      relayDown('ACK', optAck);
+    }
+    cf.ip = offered; cf.p = 24; c.gw = gwIp;
+    think(sim, cid, `${cid} queda configurado (estado BOUND)`, `<p>El cliente aplica: IP <code>${offered}</code>, máscara <code>${mask}</code>, gateway <code>${gwIp}</code> y DNS <code>${dns}</code>. Arranca los temporizadores de la concesión: <b>T1</b> = 50 % (12 h) para renovar y <b>T2</b> = 87,5 % para intentar con cualquier servidor.</p>`, 'dhcp');
+    if (cfg.probe) {
+      const others = () => members().map(m => ({ id:m.id, i:m.i, ok:false, note:'no es mi IP: ignora' }));
+      push(sim, { type:'tx', kind:'arp', tok:'ARP ?', lan:'L1', from:{ id:cid, i:0 }, to:others(), dstMac:BCAST, title:`ARP probe: «¿alguien usa ${offered}?»`,
+        html:`<p>Antes de usar la IP, un cliente prudente comprueba con ARP que nadie más la tenga (RFC 5227). El <b>probe</b> usa <code>0.0.0.0</code> como IP emisor para no contaminar las cachés ajenas. Si alguien contestara, el cliente enviaría DHCPDECLINE.</p>`,
+        layers:[eth(BCAST, mymac, ETYPE.arp), arpL({ oper:'1 (solicitud)', sha:mymac, spa:'0.0.0.0', tha:ZERO, tpa:offered })], mcq:mkMcq(W, BCAST, null, sim.steps.length) });
+      push(sim, { type:'tx', kind:'arp', tok:'ARP ?', lan:'L1', from:{ id:cid, i:0 }, to:others(), dstMac:BCAST, title:`ARP gratuito: «${offered} es mía»`,
+        html:`<p>Sin respuestas: la IP está libre. El cliente la anuncia con un <b>ARP gratuito</b> (IP emisor = IP objetivo) para que quienes tengan datos viejos sobre esa IP los actualicen.</p>`,
+        layers:[eth(BCAST, mymac, ETYPE.arp), arpL({ oper:'1 (solicitud)', sha:mymac, spa:offered, tha:ZERO, tpa:offered })], mcq:mkMcq(W, BCAST, null, sim.steps.length) });
+    }
+    if (cfg.renew) {
+      think(sim, cid, 'Pasó T1 (12 h): el cliente renueva', `<p>Ahora el cliente <b>sí tiene IP</b> y conoce al servidor: la renovación va por <b>unicast</b> directo (con ARP, y por el gateway si el servidor está en otra red), no por difusión.</p>`, 'dhcp');
+      const rq = { src:offered, dst:sf.ip, ttl:64, proto:17, kind:'dhcp', tok:'DHCP', name:'DHCP REQUEST (renovación)', l4:() => [udpL(68, 67), dhcpL({ op:'1 (BOOTREQUEST)', msg:'REQUEST', xid:'0x5A1C0BEE', ciaddr:offered, chaddr:mymac, opts:'53=3 (Request)' })] };
+      if (sendIP(sim, cid, rq).delivered) {
+        think(sim, sid, `${sid} extiende la concesión`, `<p>El servidor reconoce al cliente por <b>ciaddr</b>/<b>chaddr</b> y reinicia el lease.</p>`, 'dhcp');
+        sendIP(sim, sid, { src:sf.ip, dst:offered, ttl:64, proto:17, kind:'dhcp', tok:'DHCP', name:'DHCP ACK (renovación)', l4:() => [udpL(67, 68), dhcpL({ op:'2 (BOOTREPLY)', msg:'ACK', xid:'0x5A1C0BEE', ciaddr:offered, yiaddr:offered, chaddr:mymac, opts:'53=5 (ACK) · 51=86400 s' })] });
+      }
+    }
+  },
+  theory:`<p><b>DHCP</b> (RFC 2131) automatiza la configuración de los hosts: IP, máscara, gateway, DNS y un <b>tiempo de concesión</b> (<i>lease</i>). Evolucionó de BOOTP, que a diferencia de RARP funciona sobre UDP/IP y permite agentes de retransmisión.</p>
+  <ul><li><b>Transporte:</b> UDP; servidor puerto 67, cliente 68. Va dentro de IP, pero el cliente aún no tiene dirección: usa origen <code>0.0.0.0</code> y destino <code>255.255.255.255</code>.</li>
+  <li><b>Intercambio (DORA):</b> Discover (difusión) → Offer → Request (difusión, elige servidor) → Acknowledge. También existen NAK, Decline, Release e Inform.</li>
+  <li><b>Relay agent:</b> el router escucha las difusiones, completa <b>giaddr</b> y las reenvía por unicast al servidor; éste elige el ámbito según giaddr. Así no hace falta un servidor por LAN (a diferencia de RARP).</li>
+  <li><b>Concesión:</b> la dirección se presta por un tiempo. A T1 = 50 % el cliente renueva con su servidor; a T2 = 87,5 % intenta con cualquiera; si vence, debe abandonar la IP.</li>
+  <li><b>Tipos de asignación:</b> manual (por MAC), automática y dinámica (con vencimiento).</li></ul>`
+};
+
+/* ---------- 5. ICMP ---------- */
+function explainFail(sim, srcId, r) {
+  const m = { ttl:['Time Exceeded', 'El TTL del datagrama se agotó en el camino. Es exactamente la señal que aprovecha <i>traceroute</i>.'],
+    noroute:['Destination Unreachable (red)', 'El router no tiene ninguna ruta hacia la red destino y lo informa (tipo 3, código 0).'],
+    arp:['Destination Unreachable (host)', 'El último router no pudo resolver la MAC del destino con ARP, y lo informa (tipo 3, código 1).'] }[r.reason];
+  if (!m) return;
+  if (r.err && r.err.delivered) think(sim, srcId, `${srcId} recibe ICMP ${m[0]}`, `<p>${m[1]} <b>${srcId}</b> recibe el mensaje ICMP, lee la cabecera IP original que viene incluida para saber a qué envío corresponde, e informa a la aplicación.</p>`, 'icmperr');
+}
+function ping(sim, srcId, dstIp, ttl, seq, quiet) {
+  const sip = sim.W.nodes[srcId].ifs[0].ip;
+  const req = { src:sip, dst:dstIp, ttl, proto:1, kind:'icmp', tok:'ICMP', name:'Echo Request', l4:() => icmpL(8, 0, [['Identificador / Secuencia', `1 / ${seq}`]]) };
+  const r = sendIP(sim, srcId, req);
+  if (r.delivered) {
+    think(sim, r.node, `${r.node} recibe el Echo Request`, `<p>La capa IP ve protocolo 1 → ICMP. El tipo 8 pide una respuesta: devuelve el mismo contenido en un <b>Echo Reply</b> (tipo 0), intercambiando IP origen y destino. El Reply es un datagrama nuevo, con TTL propio.</p>`, 'icmp');
+    const rep = { src:dstIp, dst:sip, ttl:64, proto:1, kind:'icmp', tok:'ICMP', name:'Echo Reply', l4:() => icmpL(0, 0, [['Identificador / Secuencia', `1 / ${seq}`]]) };
+    const r2 = sendIP(sim, r.node, rep);
+    if (r2.delivered) think(sim, srcId, `${srcId} recibe el Echo Reply`, `<p>El destino está vivo y alcanzable. La herramienta <i>ping</i> mide el tiempo entre el envío y esta respuesta (RTT).</p>`, 'icmp');
+    return { ...r, replied:r2.delivered };
+  }
+  if (!quiet) explainFail(sim, srcId, r);
+  return r;
+}
+SC.icmp = {
+  label:'5. ICMP', title:'ICMP: ping, traceroute y mensajes de error',
+  intro:'ICMP (RFC 792) permite a hosts y routers informar errores y hacer diagnóstico. Viaja <b>encapsulado en IP</b> (protocolo 1). Probá <i>ping</i>, <i>traceroute</i>, un TTL que expira, un host inexistente y una red sin ruta.',
+  fields:[
+    { id:'mode', label:'Herramienta', type:'select', opts:[['ping', 'ping (Echo Request / Reply)'], ['trace', 'traceroute (TTL creciente)']], def:'ping' },
+    { id:'src', label:'Origen', type:'select', opts:hostOpts(ALLH), def:'A' },
+    { id:'dst', label:'IP destino', type:'text', def:'172.16.0.20' },
+    { id:'ttl', label:'TTL', type:'number', def:64, min:1, max:255, show:c => c.mode === 'ping' }
+  ],
+  presets:[ { label:'ping A → D', cfg:{ mode:'ping', src:'A', dst:'172.16.0.20', ttl:64 } }, { label:'traceroute A → D', cfg:{ mode:'trace', src:'A', dst:'172.16.0.20' } }, { label:'TTL = 2 (expira en R2)', cfg:{ mode:'ping', src:'A', dst:'172.16.0.20', ttl:2 } }, { label:'Host inexistente en LAN 3', cfg:{ mode:'ping', src:'A', dst:'172.16.0.99', ttl:64 } }, { label:'Red sin ruta (8.8.8.8)', cfg:{ mode:'ping', src:'A', dst:'8.8.8.8', ttl:64 } }, { label:'traceroute a un host inexistente', cfg:{ mode:'trace', src:'A', dst:'172.16.0.99' } } ],
+  gen(sim, cfg) {
+    if (!validIp(cfg.dst)) { think(sim, cfg.src, 'IP inválida', `<p>«${esc(cfg.dst)}» no es una dirección IPv4 válida.</p>`); return; }
+    const sip = sim.W.nodes[cfg.src].ifs[0].ip;
+    if (cfg.dst === sip) { think(sim, cfg.src, 'Destino igual al origen', '<p>Elegí otro destino.</p>'); return; }
+    if (cfg.mode === 'ping') {
+      think(sim, cfg.src, `ping ${cfg.dst} desde ${cfg.src}`, `<p>La herramienta <i>ping</i> arma un mensaje ICMP <b>Echo Request</b> (tipo 8) y lo entrega a IP con TTL inicial <b>${cfg.ttl}</b>. Para enviarlo hacen falta las mismas resoluciones ARP que para cualquier otro datagrama.</p>`, 'icmp');
+      ping(sim, cfg.src, cfg.dst, Math.max(1, Math.min(255, +cfg.ttl || 64)), 1, false);
+      return;
+    }
+    const hops = [];
+    think(sim, cfg.src, `traceroute a ${cfg.dst}`, `<p><i>traceroute</i> descubre los routers del camino usando el TTL: envía sondas con TTL = 1, 2, 3… Cada router que decrementa el TTL a 0 descarta la sonda y contesta <b>ICMP Time Exceeded</b>, revelando su dirección. Cuando una sonda llega al destino, éste contesta con un Echo Reply.</p>`, 'icmp');
+    for (let t = 1; t <= 8; t++) {
+      think(sim, cfg.src, `Sonda ${t}: Echo Request con TTL = ${t}`, `<p>Se envía una nueva sonda con TTL <b>${t}</b>.</p>`, 'icmp');
+      const r = ping(sim, cfg.src, cfg.dst, t, t, true);
+      if (r.reason === 'ttl') { hops.push(`${t}. ${r.by} (${r.byIp})`); continue; }
+      if (r.delivered) hops.push(`${t}. ${cfg.dst} (destino)`); else explainFail(sim, cfg.src, r);
+      break;
+    }
+    think(sim, cfg.src, 'Resultado de traceroute', `<p>Ruta descubierta:</p><p class="calc mono">${hops.join('<br>') || '(sin saltos)'}</p>`, 'icmp');
+  },
+  theory:`<p><b>ICMP</b> es el protocolo con que routers y hosts informan sobre problemas y hacen pruebas. No vuelve confiable a IP: sólo reporta. Se encapsula en un datagrama IP con campo de protocolo = 1.</p>
+  <ul><li><b>Destination unreachable (3):</b> código 0 red, 1 host, 3 puerto, 4 hace falta fragmentar y DF activado…</li>
+  <li><b>Time exceeded (11):</b> el TTL llegó a 0 (código 0) o venció el tiempo de reensamblado.</li>
+  <li><b>Echo request / reply (8 / 0):</b> base de <i>ping</i>.</li>
+  <li><b>Redirect (5):</b> el router informa al host que existe un camino mejor. También <b>Parameter problem (12)</b>, <b>Timestamp (13/14)</b> y <b>Router advertisement/solicitation (9/10)</b>; <b>Source quench (4)</b> está en desuso.</li></ul>
+  <p>Los mensajes de error incluyen la <b>cabecera IP original y los primeros 8 bytes</b> del datagrama culpable, para que el origen identifique la conexión afectada. Nunca se genera un ICMP de error en respuesta a otro ICMP de error, para evitar tormentas. Notá que cuando falla un ARP, el aviso que recibe el origen es ICMP: ARP resuelve direcciones <i>dentro</i> de una red; ICMP informa a lo largo del camino.</p>`
+};
+const TABS = ['route', 'arp', 'rarp', 'dhcp', 'icmp'];
+
+/* =====================================================================
+   4. INTERFAZ
+   ===================================================================== */
+const $ = s => document.querySelector(s);
+const KIND = { arp:'ARP', rarp:'RARP', ip:'IP', icmp:'ICMP', icmperr:'ICMP / error', dhcp:'DHCP', think:'Análisis' };
+const KCOL = { arp:'#8b5cf6', rarp:'#d946ef', ip:'#3157d5', icmp:'#e08a00', icmperr:'#c24141', dhcp:'#0f9d85', think:'#64748b' };
+const DISP = { S:'S · srv' };
+const NSV = 'http://www.w3.org/2000/svg';
+const S = { tab:'route', cfg:{}, run:null, idx:0, playing:false, timer:null, speed:1, pred:{ on:false, ans:{} }, runId:0, raf:0 };
+TABS.forEach(k => S.cfg[k] = Object.fromEntries(SC[k].fields.map(f => [f.id, f.def])));
+
+function buildTopo() {
+  let h = '';
+  Object.entries(LANS).forEach(([k, l]) => {
+    h += `<line class="bus" id="bus-${k}" x1="${l.x1}" y1="${BUS_Y}" x2="${l.x2}" y2="${BUS_Y}"/>`;
+    h += `<text class="lan-label" x="${(l.x1 + l.x2) / 2}" y="292" text-anchor="middle">${l.name} · ${l.net}</text>`;
+  });
+  IDS.forEach(id => { const n = BASE.nodes[id]; if (n.kind === 'host') h += `<line class="stem" x1="${n.x}" y1="${n.y + 54}" x2="${n.x}" y2="${BUS_Y}"/>`; });
+  IDS.forEach(id => {
+    const n = BASE.nodes[id];
+    if (n.kind === 'host') {
+      h += `<g class="node" id="n-${id}"><rect class="box" x="${n.x - 48}" y="${n.y}" width="96" height="54" rx="10"/><text class="nm" x="${n.x}" y="${n.y + 22}">${DISP[id] || id}</text><text class="ipt" id="ip-${id}" x="${n.x}" y="${n.y + 42}"></text></g><text class="badge" id="bd-${id}" x="${n.x}" y="${n.y - 8}"></text>`;
+    } else {
+      h += `<g class="node" id="n-${id}"><circle class="rt" cx="${n.x}" cy="${n.y}" r="26"/><text class="nm" x="${n.x}" y="${n.y + 5}">${id}</text></g><text class="badge" id="bd-${id}" x="${n.x}" y="${n.y - 36}"></text>`;
+      n.ifs.forEach(f => { const left = f.side === 'l'; h += `<text class="if-label" x="${n.x + (left ? -30 : 30)}" y="${n.y + 28}" text-anchor="${left ? 'end' : 'start'}">${f.n} ${f.ip}</text>`; });
+    }
+  });
+  h += `<g id="tokens"></g>`;
+  $('#topo').innerHTML = h;
+}
+function setBadge(id, text, cls) {
+  const el = $('#bd-' + id); if (!el) return;
+  el.setAttribute('class', 'badge ' + (cls || ''));
+  while (el.firstChild) el.removeChild(el.firstChild);
+  if (!text) return;
+  const words = text.split(' '), lines = []; let cur = '';
+  words.forEach(w => { if ((cur + ' ' + w).trim().length > 15 && cur) { lines.push(cur); cur = w; } else cur = (cur + ' ' + w).trim(); });
+  lines.push(cur);
+  const x = el.getAttribute('x'), y0 = +el.getAttribute('y');
+  lines.forEach((t, k) => { const ts = document.createElementNS(NSV, 'tspan'); ts.setAttribute('x', x); ts.setAttribute('y', y0 - 13 * (lines.length - 1 - k)); ts.textContent = t; el.appendChild(ts); });
+}
+function setNode(id, cls) { const g = $('#n-' + id); if (g) g.setAttribute('class', 'node ' + (cls || '')); }
+function attachPts(id, lan) {
+  const n = BASE.nodes[id];
+  if (n.kind === 'host') return [{ x:n.x, y:n.y + 54 }, { x:n.x, y:BUS_Y }];
+  const f = n.ifs.find(f => f.lan === lan);
+  return [{ x:n.x + (f.side === 'l' ? -26 : 26), y:BUS_Y }];
+}
+function pathFor(from, to, lan) {
+  const a = attachPts(from.id, lan), b = attachPts(to.id, lan).reverse();
+  return [...a, ...b].filter((p, i, arr) => i === 0 || p.x !== arr[i - 1].x || p.y !== arr[i - 1].y);
+}
+function paintBase(st) {
+  IDS.forEach(id => { setNode(id, ''); setBadge(id, ''); });
+  Object.keys(LANS).forEach(k => $('#bus-' + k).setAttribute('class', 'bus'));
+  $('#topo').style.setProperty('--kc', KCOL[st.kind] || KCOL.think);
+  IDS.forEach(id => { const f = st.snap[id].ifs[0]; if (BASE.nodes[id].kind === 'host') $('#ip-' + id).textContent = f.ip ? f.ip : 'sin IP'; });
+  if (st.type === 'tx') { $('#bus-' + st.lan).setAttribute('class', 'bus hot'); setNode(st.from.id, 'from'); setBadge(st.from.id, 'envía', 'from'); }
+  else { setNode(st.at, 'think'); setBadge(st.at, 'analiza', 'think'); }
+}
+function paintEnd(st) {
+  if (st.type !== 'tx') return;
+  st.to.forEach(t => {
+    const cls = t.ok === true ? 'ok' : t.ok === 'upd' ? 'upd' : 'no';
+    if (t.id === st.from.id) return;
+    setNode(t.id, cls); setBadge(t.id, t.note || (t.ok === true ? 'procesa' : 'descarta'), cls === 'upd' ? 'think' : cls);
+  });
+}
+function animate(st) {
+  cancelAnimationFrame(S.raf);
+  const tk = $('#tokens'); tk.innerHTML = '';
+  paintBase(st);
+  if (st.type !== 'tx') return;
+  const dur = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1100 / S.speed;
+  if (!dur) { paintEnd(st); return; }
+  const items = st.to.map(t => {
+    const pts = pathFor(st.from, t, st.lan); let len = 0; const seg = [];
+    for (let i = 1; i < pts.length; i++) { const d = Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); seg.push(d); len += d; }
+    const g = document.createElementNS(NSV, 'g'); g.setAttribute('class', 'token');
+    g.innerHTML = `<rect x="-24" y="-10" width="48" height="20" rx="6"/><text y="4">${st.tok || ''}</text>`;
+    tk.appendChild(g); return { g, pts, seg, len };
+  });
+  const t0 = performance.now();
+  const frame = now => {
+    const p = Math.min(1, (now - t0) / dur), e = p < .5 ? 2 * p * p : 1 - 2 * (1 - p) * (1 - p);
+    items.forEach(it => {
+      let d = e * it.len, i = 0;
+      while (i < it.seg.length - 1 && d > it.seg[i]) { d -= it.seg[i]; i++; }
+      const a = it.pts[i], b = it.pts[i + 1] || a, f = it.seg[i] ? Math.min(1, d / it.seg[i]) : 1;
+      it.g.setAttribute('transform', `translate(${a.x + (b.x - a.x) * f},${a.y + (b.y - a.y) * f})`);
+    });
+    if (p < 1) S.raf = requestAnimationFrame(frame); else { tk.innerHTML = ''; paintEnd(st); }
+  };
+  S.raf = requestAnimationFrame(frame);
+}
+
+/* ----- renderizado ----- */
+function macOwner(mac) {
+  if (mac === BCAST) return 'difusión';
+  if (mac === ZERO) return 'sin definir';
+  const o = findMac(S.run.W, mac); return o ? lbl(S.run.W, o.id, o.i) : '';
+}
+function layerHtml(L, mask) {
+  return `<div class="layer"><div class="lh">${L.name}</div><div class="fields">` + L.fields.map(([l, v, hl], k) => {
+    let val = esc(v);
+    if (isMac(String(v))) { const o = macOwner(v); if (o) val += `<small>${o}</small>`; }
+    if (mask && L.dstIdx === 0 && k === 0) val = '¿?';
+    return `<div class="fld ${hl ? 'changed' : ''}"><span class="l">${l}</span><span class="v">${val}</span></div>`;
+  }).join('') + `</div></div>`;
+}
+function answered(i) { return S.pred.ans[S.runId + ':' + i]; }
+function renderDetail() {
+  const st = S.run.steps[S.idx], W = S.run.W, q = S.pred.on && st.type === 'tx' ? st.mcq : null, ans = answered(S.idx), hide = q && !ans;
+  let h = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><span class="tag ${st.kind}">${KIND[st.kind]}</span><span class="muted small">${st.type === 'tx' ? `Trama enviada por ${lbl(W, st.from.id, st.from.i)} en la ${LANS[st.lan].name}` : `Procesamiento interno en ${st.at}`}</span></div>`;
+  h += `<h3 class="step-title">${hide ? `Una trama sale de ${lbl(W, st.from.id, st.from.i)}…` : st.title}</h3>`;
+  if (q) h += `<div class="mcq"><b>¿Cuál es la MAC destino de esta trama?</b><div class="opts">${q.options.map(o => `<button class="opt ${ans ? (o === q.correct ? 'right' : o === ans ? 'wrong' : '') : ''}" data-ans="${o}" ${ans ? 'disabled' : ''}>${o}${ans && macOwner(o) ? ' · ' + macOwner(o) : ''}</button>`).join('')}</div>${ans ? `<p style="margin:8px 0 0">${ans === q.correct ? '✔ Correcto.' : `✘ La correcta era <code>${q.correct}</code> (${macOwner(q.correct)}).`}</p>` : `<p class="muted small" style="margin:8px 0 0">Pista: mirá hacia dónde viaja la trama y la tabla de «Estado de los dispositivos».</p>`}</div>`;
+  if (hide) h += `<p class="muted">Respondé para ver la explicación y las cabeceras completas.</p>`;
+  else h += `<div class="step-body">${st.html}</div>` + (st.learn && st.learn.length ? `<div class="learn">💾 ${st.learn.map(esc).join('<br>💾 ')}</div>` : '');
+  if (st.layers) h += `<h3>Contenido de la trama (de afuera hacia adentro)</h3>` + st.layers.map(L => layerHtml(L, hide)).join('');
+  $('#detail').innerHTML = h;
+}
+function renderList() {
+  const st = S.run.steps, W = S.run.W;
+  $('#steplist').innerHTML = st.map((s, i) => `<button class="si ${i === S.idx ? 'active' : ''} ${i > S.idx ? 'future' : ''}" data-i="${i}"><span class="n">${i + 1}</span><span class="tag ${s.kind}">${KIND[s.kind]}</span><span>${s.title}</span></button>`).join('');
+  const el = $('#steplist .active'), box = $('#steplist');
+  if (el) box.scrollTop = el.offsetTop - box.clientHeight / 2 + el.clientHeight / 2;
+}
+function renderDevs() {
+  const st = S.run.steps[S.idx], snap = st.snap, prev = S.idx > 0 ? S.run.steps[S.idx - 1].snap : S.run.init;
+  $('#devs').innerHTML = IDS.map(id => {
+    const n = BASE.nodes[id], c = snap[id], p = prev[id], changed = JSON.stringify(c) !== JSON.stringify(p), ents = Object.entries(c.arp);
+    return `<div class="dev ${changed ? 'changed' : ''}"><div class="dn">${id} <span class="dr">${n.role}</span></div>` +
+      n.ifs.map((f, i) => `<div class="ifline"><b>${n.kind === 'router' ? f.n : 'eth0'}</b> <span class="mono">${c.ifs[i].ip ? c.ifs[i].ip + '/' + c.ifs[i].p : 'sin IP'}</span><br><span class="mono muted">MAC ${c.ifs[i].mac}</span></div>`).join('') +
+      (n.kind === 'host' ? `<div class="ifline muted">Gateway: <span class="mono">${c.gw || '—'}</span></div>` : '') +
+      `<table class="arpt"><tr><th>Caché ARP: IP</th><th>MAC</th></tr>${ents.length ? ents.map(([ip, mac]) => `<tr><td class="m ${p.arp[ip] !== mac ? 'new' : ''}">${ip}</td><td class="m ${p.arp[ip] !== mac ? 'new' : ''}">${mac}</td></tr>`).join('') : `<tr><td colspan="2" class="muted">vacía</td></tr>`}</table></div>`;
+  }).join('');
+}
+function renderHops() {
+  const hs = S.run.steps.map((s, i) => [s, i]).filter(([s]) => s.hop);
+  if (!hs.length) { $('#hops').innerHTML = '<p class="muted small" style="margin:0">En este escenario no hay saltos de datagramas IP enrutados entre redes (los mensajes viajan por una única red local o directamente sobre Ethernet).</p>'; return; }
+  $('#hops').innerHTML = `<table><tr><th>Paso</th><th>Red</th><th>Trama</th><th>MAC origen</th><th>MAC destino</th><th>IP origen</th><th>IP destino</th><th>TTL</th></tr>` +
+    hs.map(([s, i]) => { const h = s.hop; return `<tr class="${i === S.idx ? 'cur' : i > S.idx ? 'fut' : ''}"><td>${i + 1}</td><td>${h.lan}</td><td>${h.from} → ${h.to}</td><td class="m">${h.smac}</td><td class="m">${h.dmac}</td><td class="m">${h.sip}</td><td class="m">${h.dip}</td><td class="m">${h.ttl}</td></tr>`; }).join('') + `</table>`;
+}
+function renderScore() {
+  let ok = 0, tot = 0;
+  Object.entries(S.pred.ans).forEach(([k, v]) => { const [rid, i] = k.split(':').map(Number); if (rid !== S.runId) return; const q = S.run.steps[i] && S.run.steps[i].mcq; if (!q) return; tot++; if (v === q.correct) ok++; });
+  const nq = S.run.steps.filter(s => s.type === 'tx').length;
+  $('#score').textContent = S.pred.on ? `Aciertos: ${ok} / ${tot} respondidas (de ${nq} tramas)` : '';
+}
+function renderStep() {
+  const n = S.run.steps.length;
+  $('#stepno').textContent = `Paso ${S.idx + 1} / ${n}`;
+  $('#slider').max = n - 1; $('#slider').value = S.idx;
+  $('#b-first').disabled = $('#b-prev').disabled = S.idx === 0;
+  $('#b-next').disabled = $('#b-last').disabled = S.idx === n - 1;
+  renderDetail(); renderList(); renderDevs(); renderHops(); renderScore();
+}
+function go(i) {
+  S.idx = Math.max(0, Math.min(S.run.steps.length - 1, i));
+  renderStep(); animate(S.run.steps[S.idx]);
+}
+function updPlayBtn() { $('#b-play').textContent = S.playing ? '⏸ Pausa' : '▶ Reproducir'; }
+function stopPlay() { S.playing = false; clearTimeout(S.timer); updPlayBtn(); }
+function sched() {
+  clearTimeout(S.timer);
+  const st = S.run.steps[S.idx], wait = (st.type === 'tx' ? 2500 : 3200) / S.speed;
+  S.timer = setTimeout(() => {
+    if (!S.playing) return;
+    if (S.idx >= S.run.steps.length - 1) return stopPlay();
+    go(S.idx + 1);
+    const nx = S.run.steps[S.idx];
+    if (S.pred.on && nx.type === 'tx' && !answered(S.idx)) return stopPlay();
+    sched();
+  }, wait);
+}
+function togglePlay() {
+  if (S.playing) return stopPlay();
+  if (S.idx >= S.run.steps.length - 1) go(0);
+  S.playing = true; updPlayBtn(); sched();
+}
+
+/* ----- simulación ----- */
+function cacheCount() { return IDS.reduce((a, id) => a + Object.keys(PW.nodes[id].arp).length, 0); }
+function runSim() {
+  stopPlay();
+  const sc = SC[S.tab], cfg = S.cfg[S.tab];
+  if ($('#clr').checked) IDS.forEach(id => PW.nodes[id].arp = {});
+  const W = clone(PW), sim = mkSim(W);
+  try { sc.gen(sim, cfg); } catch (e) { console.error(e); think(sim, 'A', 'Error interno del simulador', `<p>${esc(e.message)}</p>`); }
+  if (!sim.steps.length) think(sim, 'A', 'Sin pasos', '<p>La configuración elegida no genera tráfico.</p>');
+  if (!(sc.noCommit && sc.noCommit(cfg))) IDS.forEach(id => PW.nodes[id].arp = clone(W.nodes[id].arp));
+  S.run = { steps:sim.steps, init:sim.init, W }; S.runId++;
+  $('#cache-count').textContent = `Entradas ARP guardadas entre simulaciones: ${cacheCount()}`;
+  go(0);
+}
+function renderConfig() {
+  const sc = SC[S.tab], cfg = S.cfg[S.tab];
+  $('#sc-title').textContent = sc.title; $('#sc-intro').innerHTML = sc.intro;
+  $('#form').innerHTML = sc.fields.filter(f => !f.show || f.show(cfg)).map(f => {
+    if (f.type === 'checkbox') return `<label class="field check"><input type="checkbox" data-f="${f.id}" ${cfg[f.id] ? 'checked' : ''}> ${f.text}</label>`;
+    const inp = f.type === 'select' ? `<select data-f="${f.id}">${f.opts.map(([v, t]) => `<option value="${v}" ${cfg[f.id] == v ? 'selected' : ''}>${t}</option>`).join('')}</select>`
+      : `<input type="${f.type}" data-f="${f.id}" value="${esc(cfg[f.id])}" ${f.min != null ? `min="${f.min}" max="${f.max}"` : ''}>`;
+    return `<div class="field"><label>${f.label}</label>${inp}</div>`;
+  }).join('') + `<button class="btn" id="b-run">Simular</button>`;
+  $('#presets').innerHTML = `<span class="muted small">Ejemplos:</span>` + sc.presets.map((p, i) => `<button class="chip" data-p="${i}">${p.label}</button>`).join('');
+  $('#theory-body').innerHTML = sc.theory;
+}
+function selectTab(k) {
+  stopPlay(); S.tab = k;
+  $('#tabs').innerHTML = [...TABS.map(t => `<button class="tab ${k === t ? 'active' : ''}" data-tab="${t}">${SC[t].label}</button>`), `<button class="tab ${k === 'sum' ? 'active' : ''}" data-tab="sum">6. Resumen y repaso</button>`].join('');
+  $('#view-sim').hidden = k === 'sum'; $('#view-sum').hidden = k !== 'sum';
+  if (k === 'sum') { $('#view-sum').innerHTML = SUMMARY; return; }
+  renderConfig(); runSim();
+}
+
+/* ----- eventos ----- */
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) selectTab(b.dataset.tab); });
+$('#form').addEventListener('change', e => {
+  const el = e.target.closest('[data-f]'); if (!el) return;
+  S.cfg[S.tab][el.dataset.f] = el.type === 'checkbox' ? el.checked : el.type === 'number' ? (+el.value || 1) : el.value.trim();
+  renderConfig();
+});
+$('#form').addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('input[type=text],input[type=number]')) { e.target.dispatchEvent(new Event('change', { bubbles:true })); runSim(); } });
+$('#form').addEventListener('click', e => { if (e.target.id === 'b-run') runSim(); });
+$('#presets').addEventListener('click', e => { const b = e.target.closest('[data-p]'); if (!b) return; Object.assign(S.cfg[S.tab], SC[S.tab].presets[+b.dataset.p].cfg); renderConfig(); runSim(); });
+$('#btn-flush').addEventListener('click', () => { IDS.forEach(id => PW.nodes[id].arp = {}); $('#cache-count').textContent = 'Cachés ARP vaciadas. Entradas guardadas: 0'; });
+$('#b-first').addEventListener('click', () => { stopPlay(); go(0); });
+$('#b-prev').addEventListener('click', () => { stopPlay(); go(S.idx - 1); });
+$('#b-next').addEventListener('click', () => { stopPlay(); go(S.idx + 1); });
+$('#b-last').addEventListener('click', () => { stopPlay(); go(S.run.steps.length - 1); });
+$('#b-play').addEventListener('click', togglePlay);
+$('#slider').addEventListener('input', e => { stopPlay(); go(+e.target.value); });
+$('#speed').addEventListener('change', e => { S.speed = +e.target.value; });
+$('#pred').addEventListener('change', e => { S.pred.on = e.target.checked; renderStep(); });
+$('#steplist').addEventListener('click', e => { const b = e.target.closest('[data-i]'); if (b) { stopPlay(); go(+b.dataset.i); } });
+$('#detail').addEventListener('click', e => { const b = e.target.closest('[data-ans]'); if (!b) return; S.pred.ans[S.runId + ':' + S.idx] = b.dataset.ans; renderStep(); });
+document.addEventListener('keydown', e => {
+  if (e.target.matches('input,select,textarea') || $('#view-sim').hidden || !S.run) return;
+  if (e.key === 'ArrowRight') { stopPlay(); go(S.idx + 1); } else if (e.key === 'ArrowLeft') { stopPlay(); go(S.idx - 1); }
+});
+
+/* =====================================================================
+   5. RESUMEN
+   ===================================================================== */
+const SUMMARY = `
+<div class="card">
+  <h2>Cuadro comparativo</h2>
+  <div class="notice warn"><b>Ojo con una confusión muy común:</b> no todo viaja dentro de IP. <b>ARP y RARP</b> se encapsulan <b>directamente en la trama Ethernet</b> (por eso funcionan sin IP configurada y no atraviesan routers). <b>ICMP</b> va dentro de un datagrama IP (protocolo 1) y <b>DHCP</b> dentro de UDP sobre IP.</div>
+  <div class="tw" style="margin-top:12px"><table>
+    <tr><th>Protocolo</th><th>Qué resuelve</th><th>Encapsulado en</th><th>Alcance</th><th>Mensajes</th></tr>
+    <tr><td><b>ARP</b> (RFC 826)</td><td>IP → MAC</td><td>Ethernet, EtherType 0x0806</td><td>Red local (difusión)</td><td>Request (difusión) / Reply (unicast)</td></tr>
+    <tr><td><b>RARP</b> (RFC 903)</td><td>MAC → IP (sólo la IP)</td><td>Ethernet, EtherType 0x8035</td><td>Red local; un servidor por LAN</td><td>Request (difusión) / Reply (unicast)</td></tr>
+    <tr><td><b>DHCP</b> (RFC 2131)</td><td>Configuración completa: IP, máscara, gateway, DNS, lease</td><td>UDP 67 (servidor) / 68 (cliente) sobre IP</td><td>Local, o varias redes con relay</td><td>Discover, Offer, Request, Ack (Nak, Decline, Release, Inform)</td></tr>
+    <tr><td><b>ICMP</b> (RFC 792)</td><td>Errores y diagnóstico de la capa IP</td><td>IP, protocolo 1</td><td>Extremo a extremo (cruza routers)</td><td>Echo, Destination unreachable, Time exceeded, Redirect…</td></tr>
+  </table></div>
+  <h3>Encapsulamiento</h3>
+  <div class="enc">
+    <div class="encrow"><span class="lbl">ARP / RARP</span><span class="eth">Ethernet</span><span class="arp">ARP (28 bytes)</span></div>
+    <div class="encrow"><span class="lbl">ICMP (ping, errores)</span><span class="eth">Ethernet</span><span class="ip">IP · proto 1</span><span class="icmp">ICMP</span></div>
+    <div class="encrow"><span class="lbl">DHCP</span><span class="eth">Ethernet</span><span class="ip">IP · proto 17</span><span class="udp">UDP 67/68</span><span class="dhcp">DHCP</span></div>
+    <div class="encrow"><span class="lbl">Datos de aplicación</span><span class="eth">Ethernet</span><span class="ip">IP</span><span class="udp">UDP / TCP</span><span class="rarp" style="background:#94a3b8">Datos</span></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>Formato del mensaje ARP / RARP (Ethernet + IPv4)</h2>
+  <div class="tw"><table>
+    <tr><th>Campo</th><th>Tamaño</th><th>Valor / significado</th></tr>
+    <tr><td>Tipo de hardware</td><td>2 bytes</td><td>1 = Ethernet</td></tr>
+    <tr><td>Tipo de protocolo</td><td>2 bytes</td><td>0x0800 = IPv4</td></tr>
+    <tr><td>HLEN / PLEN</td><td>1 + 1 bytes</td><td>6 (MAC) / 4 (IPv4)</td></tr>
+    <tr><td>Operación</td><td>2 bytes</td><td>1 = ARP request, 2 = ARP reply, 3 = RARP request, 4 = RARP reply</td></tr>
+    <tr><td>SHA</td><td>6 bytes</td><td>Dirección MAC del emisor</td></tr>
+    <tr><td>SPA</td><td>4 bytes</td><td>Dirección IP del emisor</td></tr>
+    <tr><td>THA</td><td>6 bytes</td><td>MAC objetivo (en la solicitud ARP: ceros, es lo que se busca)</td></tr>
+    <tr><td>TPA</td><td>4 bytes</td><td>IP objetivo (por la que se pregunta)</td></tr>
+  </table></div>
+  <p class="muted small" style="margin-bottom:0">Total: 28 bytes. La trama Ethernet que los transporta se difunde (FF:FF:FF:FF:FF:FF) en las solicitudes y se envía por unicast en las respuestas.</p>
+</div>
+
+<div class="card">
+  <h2>Mensajes ICMP más importantes</h2>
+  <div class="tw"><table>
+    <tr><th>Tipo</th><th>Código</th><th>Nombre</th><th>Cuándo se genera</th></tr>
+    <tr><td>0 / 8</td><td>0</td><td>Echo Reply / Echo Request</td><td><i>ping</i></td></tr>
+    <tr><td>3</td><td>0, 1, 3, 4…</td><td>Destination Unreachable</td><td>0 red, 1 host, 3 puerto, 4 fragmentación necesaria con DF activo</td></tr>
+    <tr><td>11</td><td>0 / 1</td><td>Time Exceeded</td><td>TTL llegó a 0 en tránsito / venció el reensamblado. Base de <i>traceroute</i></td></tr>
+    <tr><td>5</td><td>0–3</td><td>Redirect</td><td>El router indica al host un camino mejor</td></tr>
+    <tr><td>12</td><td>—</td><td>Parameter Problem</td><td>Campo de cabecera IP inválido</td></tr>
+    <tr><td>4</td><td>0</td><td>Source Quench</td><td>Control de congestión primitivo (en desuso)</td></tr>
+    <tr><td>13 / 14</td><td>0</td><td>Timestamp Request / Reply</td><td>Sincronización y medición de retardos</td></tr>
+  </table></div>
+</div>
+
+<div class="card">
+  <h2>Preguntas de repaso</h2>
+  <details><summary>1. Cuando A envía a D (otra red), ¿por qué la MAC destino de la primera trama es la de R1 y no la de D?</summary><p>Porque la MAC sólo sirve dentro de la red local. A aplica su máscara, ve que D está en otra red y entrega el paquete a su gateway (R1): necesita la MAC de R1. La IP destino sigue siendo la de D.</p></details>
+  <details><summary>2. ¿Qué campos del datagrama cambian al cruzar un router y cuáles no?</summary><p>Cambian: el TTL (−1), el checksum de cabecera (por el TTL) y, en la trama que lo transporta, MAC origen y MAC destino. No cambian: IP origen, IP destino ni el contenido del segmento (salvo NAT, que no se trata aquí).</p></details>
+  <details><summary>3. ¿Por qué ARP no puede resolver la MAC de un host de otra red? ¿Cómo se resuelve entonces?</summary><p>La solicitud ARP se difunde a nivel de enlace y los routers no reenvían difusiones. El host resuelve la MAC del <i>gateway</i>, y cada router resuelve la del siguiente salto en su propia red. La excepción es el proxy ARP, donde el router contesta con su propia MAC.</p></details>
+  <details><summary>4. ¿Por qué un cliente DHCP envía con IP origen 0.0.0.0 y destino 255.255.255.255? ¿Para qué sirve el relay?</summary><p>Todavía no tiene dirección ni conoce al servidor, así que usa difusión limitada. Como los routers no reenvían difusiones, un relay agent las recibe, completa <b>giaddr</b> y las reenvía como unicast al servidor; éste usa giaddr para elegir el ámbito y contesta al relay, que entrega la respuesta al cliente.</p></details>
+  <details><summary>5. ¿Qué limitaciones de RARP resolvió DHCP?</summary><p>RARP necesitaba un servidor por red (no cruza routers), sólo devolvía la IP (sin máscara, gateway ni DNS), usaba una tabla estática manual y trabajaba directamente sobre Ethernet. DHCP usa UDP/IP con relays, entrega la configuración completa y asigna dinámicamente con concesión temporal.</p></details>
+  <details><summary>6. ¿Cómo funciona traceroute?</summary><p>Envía sondas con TTL 1, 2, 3… Cada router donde el TTL llega a 0 descarta la sonda y responde ICMP Time Exceeded, con lo que se conoce su IP. Cuando una sonda llega al destino, éste responde (por ejemplo, Echo Reply) y termina.</p></details>
+  <details><summary>7. ¿Qué es un ARP gratuito y para qué sirve?</summary><p>Una solicitud ARP donde IP emisor = IP objetivo, difundida sin esperar respuesta. Actualiza cachés ajenas tras un cambio de MAC o un failover, y si alguien contesta revela una IP duplicada.</p></details>
+  <details><summary>8. ¿Qué ocurre si un host miente en sus respuestas ARP?</summary><p>ARP no tiene autenticación: cualquiera puede contestar o enviar respuestas no solicitadas, y los demás actualizan su caché (<i>ARP spoofing</i>), lo que permite desviar tráfico (hombre en el medio). Se mitiga con entradas estáticas, inspección dinámica de ARP en los switches, etc.</p></details>
+  <details><summary>9. Si A hace ping a D, ¿por qué el Echo Reply normalmente no genera mensajes ARP?</summary><p>Porque cada solicitud ARP del camino de ida enseñó la MAC del que preguntó al que respondió (A a R1, R1 a R2, R2 a D). Al volver, cada equipo ya tiene en su caché a quién entregar la trama.</p></details>
+</div>
+
+<div class="card">
+  <h2>Bibliografía</h2>
+  <ul style="margin:0;padding-left:20px">
+    <li>A. S. Tanenbaum y D. J. Wetherall, <i>Redes de computadoras</i>, capítulo 5 (La capa de red): protocolos de control de Internet (ICMP, ARP y DHCP) y direccionamiento IP. Para la capa de enlace y Ethernet, capítulos 3 y 4.</li>
+    <li>RFC 826 (ARP), RFC 903 (RARP), RFC 792 (ICMP), RFC 2131 (DHCP), RFC 5227 (detección de direcciones IPv4 duplicadas).</li>
+  </ul>
+  <p class="muted small" style="margin-bottom:0">Las direcciones, MAC y tablas de este simulador son ficticias y simplificadas con fines didácticos (las MAC comienzan con 02, el bit de «administración local»).</p>
+</div>`;
+
+/* ===== arranque ===== */
+buildTopo();
+selectTab('route');
+</script>
+</body>
+</html>
