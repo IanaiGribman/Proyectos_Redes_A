@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de redes Ethernet</title>
+<style>
+  :root {
+    --bg: #f3f6fb;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --text: #172033;
+    --muted: #64748b;
+    --line: #dbe3ef;
+    --primary: #3157d5;
+    --primary-dark: #2443ad;
+    --accent: #0f9d85;
+    --danger: #c24141;
+    --warning: #9a6700;
+    --shadow: 0 8px 25px rgba(20, 35, 70, .07);
+    --radius: 16px;
+    --host-color: #0f9d85;
+    --link-color: #94a3b8;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; }
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  .hero { background: linear-gradient(120deg, #172554, #3157d5); color: white; padding: 28px max(22px, calc((100% - 1240px)/2)); }
+  .hero h1 { margin: 0 0 5px; font-size: clamp(24px, 3vw, 34px); letter-spacing: -.04em; }
+  .hero p { margin: 0; color: #dbeafe; max-width: 760px; }
+  .container { max-width: 1240px; padding: 22px; margin: auto; }
+  .tabs { display:flex; gap:8px; flex-wrap:wrap; margin: 0 0 18px; }
+  .tab { border:1px solid var(--line); background:white; color:#475569; border-radius:999px; padding:9px 16px; font-weight:650; }
+  .tab.active { background:var(--primary); color:white; border-color:var(--primary); }
+  .layout { display:grid; grid-template-columns: minmax(300px, 1fr) minmax(320px, 1fr); gap:18px; align-items:start; margin-top:16px; }
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px; min-width:0; }
+  .card + .card { margin-top:16px; }
+  h2 { font-size:19px; margin:0 0 13px; letter-spacing:-.02em; }
+  h3 { font-size:15px; margin:0 0 10px; }
+  .muted { color:var(--muted); }
+  .small { font-size:12px; }
+  .field { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  label { color:#475569; font-size:12px; font-weight:700; }
+  input, select { width:100%; border:1px solid #cbd5e1; border-radius:9px; padding:9px 10px; background:white; color:var(--text); min-width:0; }
+  input:focus, select:focus { outline:3px solid rgba(49,87,213,.14); border-color:var(--primary); }
+  .row-fields { display:grid; grid-template-columns: 1fr 1fr; gap:9px; }
+  .row-fields.three { grid-template-columns: 1fr 1fr auto; align-items:end; }
+  .btn { border:0; border-radius:9px; padding:9px 13px; color:white; background:var(--primary); font-weight:700; transition:.15s; }
+  .btn:hover { background:var(--primary-dark); }
+  .btn.secondary { color:#334155; background:#e9eef7; }
+  .btn.secondary:hover { background:#dce5f2; }
+  .btn.ghost { color:var(--primary); background:#eef2ff; }
+  .btn:disabled { opacity:.45; cursor:not-allowed; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:11px; }
+  .stack { display:flex; flex-direction:column; gap:10px; }
+  .item { display:flex; align-items:center; justify-content:space-between; gap:10px; border:1px solid var(--line); border-radius:11px; padding:9px 10px; background:#fff; }
+  .item-main { min-width:0; }
+  .item-title { font-weight:750; }
+  .pill { display:inline-flex; align-items:center; border-radius:999px; padding:2px 8px; background:#eef2ff; color:#334bb0; font-size:11px; font-weight:750; margin-left:5px; }
+  .pill.host { background:#e7f7f3; color:#087b68; }
+  .pill.hub { background:#fff3db; color:#946200; }
+  .icon-btn { border:0; background:transparent; color:#9f3030; border-radius:7px; padding:5px 7px; font-weight:800; }
+  .icon-btn:hover { background:#fff0f0; }
+  .topology-wrap { position:relative; overflow:hidden; border:1px solid var(--line); background:linear-gradient(#fff,#fbfdff); border-radius:12px; }
+  .topology-wrap.compact { max-height: 460px; }
+  #topology { display:block; user-select:none; -webkit-user-select:none; touch-action:none; width:100%; height:auto; max-height:640px; }
+  .topology-wrap.compact #topology { max-height: 420px; }
+  #topology.panning { cursor: grab; }
+  #topology.panning.active { cursor: grabbing; }
+  .zoom-toolbar {
+    position:absolute; top:10px; right:10px; display:flex; gap:4px;
+    background:rgba(255,255,255,.92); border:1px solid var(--line);
+    border-radius:9px; padding:4px; box-shadow:0 2px 8px rgba(0,0,0,.06);
+  }
+  .zoom-btn {
+    border:0; background:transparent; color:#334155;
+    width:30px; height:30px; border-radius:6px; font-weight:800; font-size:14px;
+    display:grid; place-items:center;
+  }
+  .zoom-btn:hover { background:#eef2ff; color:var(--primary); }
+  .zoom-btn.wide { width:auto; padding:0 9px; font-size:12px; }
+  .mode-toolbar { display:flex; flex-wrap:wrap; gap:6px; }
+  .mode-btn { border:1px solid var(--line); background:white; color:#475569; border-radius:8px; padding:6px 11px; font-size:12px; font-weight:700; }
+  .mode-btn:hover { background:#f1f5f9; }
+  .mode-btn.active { background:var(--primary); color:white; border-color:var(--primary); }
+  .mode-btn.active:hover { background:var(--primary-dark); }
+  .legend { display:flex; flex-wrap:wrap; gap:13px; margin-top:10px; color:var(--muted); font-size:12px; }
+  .legend span::before { content:""; display:inline-block; width:9px; height:9px; border-radius:3px; margin-right:6px; background:#c7d2fe; }
+  .legend .l-host::before { background:var(--host-color); }
+  .legend .l-hub::before { background:#f8d78b; }
+  .connection-list { display:grid; grid-template-columns:1fr; gap:7px; }
+  .connection { border:1px solid var(--line); border-radius:9px; padding:8px 9px; font-size:12px; }
+  .connection .name { color:#334155; font-weight:700; }
+  .connection .port { font-weight: 800; }
+  .connection .arrow { color:#94a3b8; margin:0 4px; }
+  .notice { padding:10px 12px; border-radius:10px; background:#eff6ff; color:#1e40af; font-size:13px; margin-top:10px; }
+  .notice.warn { background:#fff7e6; color:#885900; }
+  .notice.error { background:#fff0f0; color:#9f3030; }
+  .section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+  .sequence-row { display:grid; grid-template-columns:32px 1fr auto; gap:8px; align-items:center; padding:9px; border:1px solid var(--line); border-radius:10px; }
+  .sequence-number { width:27px; height:27px; display:grid; place-items:center; border-radius:50%; background:#eef2ff; color:#334bb0; font-weight:800; font-size:12px; }
+  .arrow { color:#64748b; margin:0 6px; }
+  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .progress { height:7px; background:#e5eaf2; border-radius:99px; overflow:hidden; margin:10px 0 5px; }
+  .progress > div { height:100%; background:var(--accent); transition:width .2s; }
+  .result-box { border:1px solid var(--line); border-radius:11px; padding:12px; background:var(--surface-2); }
+  .result-box strong { display:block; margin-bottom:4px; }
+  .event-list { padding-left:20px; margin:8px 0 0; }
+  .event-list li { margin:5px 0; color:#475569; }
+  .table-wrap { overflow:auto; border:1px solid var(--line); border-radius:11px; }
+  table { border-collapse:collapse; width:100%; font-size:13px; white-space:nowrap; }
+  th, td { text-align:center; padding:8px 10px; border-bottom:1px solid var(--line); }
+  th { background:#f2f5fb; color:#475569; font-size:11px; text-transform:uppercase; letter-spacing:.04em; position:sticky; top:0; }
+  td:first-child, th:first-child { text-align:left; }
+  tr:last-child td { border-bottom:0; }
+  .yes { color:#07836f; font-weight:900; }
+  .no { color:#cbd5e1; }
+  .switch-tables { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; }
+  .switch-card { border:1px solid var(--line); border-radius:11px; padding:12px; min-width:0; }
+  .switch-card table { margin-top:7px; }
+  .switch-card th, .switch-card td { padding:6px 7px; }
+  .practice-cell { min-width:38px; }
+  .practice-cell input { width:17px; height:17px; accent-color:var(--primary); cursor:pointer; }
+  .manual-row { display:grid; grid-template-columns:1fr 1fr auto; gap:7px; margin:7px 0; align-items:center; }
+  .feedback { border:1px solid var(--line); border-radius:10px; padding:12px; margin-top:12px; }
+  .feedback.good { background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }
+  .feedback.bad { background:#fff7ed; border-color:#fed7aa; color:#9a3412; }
+  .hidden { display:none !important; }
+  .node-group { cursor: pointer; }
+  .node-group.connect-source rect { stroke-width: 4; }
+  #topology.readonly .node-group { cursor: default; }
+
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+    display: grid; place-items: center; z-index: 1000; padding: 16px;
+  }
+  .modal {
+    background: white; border-radius: 14px; padding: 20px;
+    max-width: 480px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,.3);
+  }
+  .modal h3 { margin: 0 0 6px; font-size: 17px; }
+  .modal p { margin: 0 0 14px; }
+  .modal .row-fields { margin: 14px 0; }
+
+  details > summary { list-style: none; cursor: pointer; padding: 4px 0; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before {
+    content: '▸'; display: inline-block; margin-right: 8px;
+    transition: transform .15s; color: var(--muted);
+  }
+  details[open] > summary::before { transform: rotate(90deg); }
+
+  @media (max-width:900px) { .layout { grid-template-columns:1fr; } }
+  @media (max-width:600px) { .container { padding:13px; } .hero { padding:22px 16px; } .row-fields, .connection-list { grid-template-columns:1fr; } .manual-row { grid-template-columns:1fr 1fr auto; } .row-fields.three { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="hero">
+  <h1>Simulador de redes Ethernet</h1>
+  <p>Armá una topología de hosts, switches y hubs en el lienzo. Definí una secuencia de tramas, mirá el aprendizaje de MAC y después poné a prueba lo que aprendiste. Tu configuración se guarda automáticamente en este navegador.</p>
+</header>
+<main class="container">
+  <nav class="tabs" aria-label="Secciones">
+    <button class="tab active" data-tab="topologia">1. Topología</button>
+    <button class="tab" data-tab="simulacion">2. Tráfico y simulación</button>
+    <button class="tab" data-tab="practica">3. Practicar</button>
+  </nav>
+  <div id="app"></div>
+</main>
+<script>
+(() => {
+  'use strict';
+
+  const NODE_W = 150, NODE_H = 75;
+  const PAD = 120;
+  const MAX_PORTS = 24;
+  const STORAGE_KEY = 'simulador-ethernet/v1';
+  const ZOOM_MIN = 0.25, ZOOM_MAX = 4, ZOOM_STEP = 1.2;
+
+  // Paleta de colores para switches/hubs (se asignan al crear el nodo)
+  // Evitamos verdes muy parecidos al host para no confundir.
+  const DEVICE_PALETTE = [
+    '#dc2626', // rojo
+    '#2563eb', // azul
+    '#9333ea', // violeta
+    '#ea580c', // naranja
+    '#0d9488', // teal oscuro
+    '#db2777', // rosa
+    '#7c3aed', // púrpura
+    '#b45309', // ámbar oscuro
+    '#0891b2', // cyan oscuro
+    '#4f46e5', // índigo
+    '#be123c', // carmesí
+    '#059669'  // esmeralda
+  ];
+  const HOST_COLOR = '#0f9d85';
+  const LINK_COLOR = '#94a3b8';
+
+  const state = {
+    nodes: [], links: [], traffic: [],
+    nextNode: 1, nextLink: 1,
+    activeTab: 'topologia',
+    simResults: [], simIndex: 0,
+    practiceHostAnswers: {}, practiceMacRows: {}, practiceResult: null,
+    message: null,
+    mode: 'select',
+    connectFrom: null,
+    pendingLink: null,
+    zoom: 1,
+    panX: 0, panY: 0
+  };
+  const app = document.getElementById('app');
+
+  const esc = v => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const nodeById = id => state.nodes.find(n => n.id === id);
+  const hosts = () => state.nodes.filter(n => n.type === 'host');
+  const switches = () => state.nodes.filter(n => n.type === 'switch');
+  const linksFor = id => state.links.filter(l => l.a === id || l.b === id);
+  const otherEnd = (link, id) => link.a === id ? link.b : link.a;
+  const portAt = (link, id) => link.a === id ? link.portA : link.portB;
+  const portOptions = id => linksFor(id).map(l => ({value: portAt(l,id), label: portAt(l,id)}));
+  const typeLabel = t => ({host:'Host', switch:'Switch', hub:'Hub'}[t] || t);
+  const nodeName = id => { const n = nodeById(id); return n ? n.label : '?'; };
+  const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+  // Color de un nodo (host verde fijo, switches/hubs según su color asignado)
+  function colorFor(node) {
+    if (!node) return '#64748b';
+    if (node.type === 'host') return HOST_COLOR;
+    return node.color || '#7c3aed';
+  }
+  // Aclarar un color para el fondo del nodo
+  function lighten(hex, amount = 0.85) {
+    const c = hex.replace('#', '');
+    const r = parseInt(c.substr(0,2), 16);
+    const g = parseInt(c.substr(2,2), 16);
+    const b = parseInt(c.substr(4,2), 16);
+    const nr = Math.round(r + (255 - r) * amount);
+    const ng = Math.round(g + (255 - g) * amount);
+    const nb = Math.round(b + (255 - b) * amount);
+    return `rgb(${nr}, ${ng}, ${nb})`;
+  }
+  // Asignar el próximo color de la paleta (rotativo)
+  function nextDeviceColor() {
+    const used = state.nodes
+      .filter(n => n.type !== 'host' && n.color)
+      .map(n => n.color);
+    for (const c of DEVICE_PALETTE) {
+      if (!used.includes(c)) return c;
+    }
+    // Todos usados: rotamos por índice
+    const idx = state.nodes.filter(n => n.type !== 'host').length % DEVICE_PALETTE.length;
+    return DEVICE_PALETTE[idx];
+  }
+
+  // Devuelve puertos coloreados del enlace
+  function linkParts(l) {
+    const na = nodeById(l.a), nb = nodeById(l.b);
+    if (!na || !nb) return { aHasPort: false, bHasPort: false, aPort: '', bPort: '', aColor: '#64748b', bColor: '#64748b' };
+    const aHasPort = na.type !== 'host';
+    const bHasPort = nb.type !== 'host';
+    return {
+      aHasPort, bHasPort,
+      aPort: aHasPort ? l.portA : '',
+      bPort: bHasPort ? l.portB : '',
+      aColor: colorFor(na),
+      bColor: colorFor(nb)
+    };
+  }
+
+  // HTML de la etiqueta para la lista de enlaces
+  function linkLabelHTML(l) {
+    const p = linkParts(l);
+    const na = nodeById(l.a), nb = nodeById(l.b);
+    const nameA = `<span class="name">${esc(na?.label || '?')}</span>`;
+    const nameB = `<span class="name">${esc(nb?.label || '?')}</span>`;
+    const portA = p.aHasPort ? `<span class="port" style="color:${p.aColor}">${esc(p.aPort)}</span>` : '';
+    const portB = p.bHasPort ? `<span class="port" style="color:${p.bColor}">${esc(p.bPort)}</span>` : '';
+    if (p.aHasPort && p.bHasPort) {
+      return `${nameA} ${portA} <span class="arrow">↔</span> ${nameB} ${portB}`;
+    }
+    if (p.aHasPort) {
+      return `${nameA} ${portA} <span class="arrow">↔</span> ${nameB}`;
+    }
+    return `${nameA} <span class="arrow">↔</span> ${nameB} ${portB}`;
+  }
+
+  function nextHostLabel() {
+    const used = new Set(hosts().map(h => h.label));
+    for (const c of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ') if (!used.has(c)) return c;
+    return `Host ${hosts().length + 1}`;
+  }
+  function nextDeviceLabel(type) {
+    return `${typeLabel(type)} ${state.nodes.filter(n => n.type === type).length + 1}`;
+  }
+
+  function invalidateSimulation() {
+    state.simResults = []; state.simIndex = 0;
+    state.practiceHostAnswers = {}; state.practiceResult = null;
+    switches().forEach(sw => { state.practiceMacRows[sw.id] = []; });
+  }
+
+  function usedPorts(swId) {
+    const used = new Set();
+    state.links.forEach(l => {
+      if (l.a === swId) used.add(l.portA);
+      if (l.b === swId) used.add(l.portB);
+    });
+    return used;
+  }
+  function availablePorts(swId) {
+    const used = usedPorts(swId);
+    const out = [];
+    for (let i = 1; i <= MAX_PORTS; i++) if (!used.has(`P${i}`)) out.push(`P${i}`);
+    return out;
+  }
+  function firstAvailablePort(swId) {
+    const a = availablePorts(swId);
+    return a.length ? a[0] : null;
+  }
+
+  function addNode(type, label, x, y) {
+    const id = `n${state.nextNode++}`;
+    let hostNo = 1;
+    const macOf = n => `02:00:00:00:00:${n.toString(16).padStart(2,'0').toUpperCase()}`;
+    while (hosts().some(h => h.mac === macOf(hostNo))) hostNo++;
+    const node = {
+      id, type,
+      label: (label || '').trim() || (type === 'host' ? nextHostLabel() : nextDeviceLabel(type)),
+      mac: type === 'host' ? macOf(hostNo) : null,
+      x: x ?? 120,
+      y: y ?? 120,
+      color: type === 'host' ? HOST_COLOR : nextDeviceColor()
+    };
+    state.nodes.push(node);
+    if (type === 'switch') state.practiceMacRows[id] = [];
+    invalidateSimulation();
+    scheduleSave();
+    return node;
+  }
+
+  function isReachable(start, goal) {
+    const seen = new Set([start]), queue = [start];
+    while (queue.length) {
+      const id = queue.shift();
+      if (id === goal) return true;
+      for (const l of linksFor(id)) {
+        const next = otherEnd(l, id);
+        if (!seen.has(next)) { seen.add(next); queue.push(next); }
+      }
+    }
+    return false;
+  }
+
+  function validateLink(a, b) {
+    if (!a || !b || a === b) return 'Elegí dos dispositivos distintos.';
+    const na = nodeById(a), nb = nodeById(b);
+    if (!na || !nb) return 'No se encontraron los dispositivos.';
+    if (na.type === 'host' && linksFor(a).length) return `${na.label} ya tiene una conexión. Un host solo puede tener una interfaz en este modelo.`;
+    if (nb.type === 'host' && linksFor(b).length) return `${nb.label} ya tiene una conexión. Un host solo puede tener una interfaz en este modelo.`;
+    if (state.links.some(l => (l.a === a && l.b === b) || (l.a === b && l.b === a))) return 'Esos dispositivos ya están conectados.';
+    if (isReachable(a, b)) return 'No se agregó: formaría un ciclo. Este simulador no soporta bucles (sin STP).';
+    return null;
+  }
+
+  function addLink(a, b, portA, portB) {
+    const err = validateLink(a, b);
+    if (err) return err;
+    const na = nodeById(a), nb = nodeById(b);
+    const usedA = usedPorts(a), usedB = usedPorts(b);
+    const finalPortA = na.type === 'host' ? 'eth0' : (portA && !usedA.has(portA) ? portA : firstAvailablePort(a));
+    const finalPortB = nb.type === 'host' ? 'eth0' : (portB && !usedB.has(portB) ? portB : firstAvailablePort(b));
+    if (!finalPortA || !finalPortB) return 'No hay puertos disponibles.';
+    state.links.push({ id: `l${state.nextLink++}`, a, b, portA: finalPortA, portB: finalPortB });
+    invalidateSimulation();
+    scheduleSave();
+    return null;
+  }
+
+  function removeNode(id) {
+    state.nodes = state.nodes.filter(n => n.id !== id);
+    state.links = state.links.filter(l => l.a !== id && l.b !== id);
+    state.traffic = state.traffic.filter(t => t.src !== id && t.dst !== id);
+    delete state.practiceMacRows[id];
+    invalidateSimulation();
+    scheduleSave();
+  }
+  function removeLink(id) {
+    state.links = state.links.filter(l => l.id !== id);
+    invalidateSimulation();
+    scheduleSave();
+  }
+
+  function clearAll() {
+    state.nodes = []; state.links = []; state.traffic = [];
+    state.nextNode = 1; state.nextLink = 1;
+    state.practiceMacRows = {};
+    state.mode = 'select'; state.connectFrom = null; state.pendingLink = null; state.message = null;
+    state.zoom = 1; state.panX = 0; state.panY = 0;
+    invalidateSimulation();
+    scheduleSave();
+  }
+
+  function loadExample() {
+    clearAll();
+    const s1 = { id: 'n1', type: 'switch', label: 'Switch 1', mac: null, x: 380, y: 260, color: DEVICE_PALETTE[0] };
+    const s2 = { id: 'n2', type: 'switch', label: 'Switch 2', mac: null, x: 640, y: 260, color: DEVICE_PALETTE[1] };
+    state.nodes.push(s1, s2);
+    state.nextNode = 3;
+
+    const pos = { A:[90,80], B:[90,220], C:[90,360], D:[90,500], E:[880,110], F:[880,260], G:[880,410] };
+    const names = ['A','B','C','D','E','F','G'];
+    const hs = {};
+    names.forEach((name, i) => {
+      const id = `n${i + 3}`;
+      const [px, py] = pos[name];
+      const h = {
+        id, type: 'host', label: name,
+        mac: `02:00:00:00:00:${(i + 1).toString(16).padStart(2,'0').toUpperCase()}`,
+        x: px, y: py,
+        color: HOST_COLOR
+      };
+      state.nodes.push(h); hs[name] = id;
+    });
+    state.nextNode = 10;
+    state.practiceMacRows[s1.id] = []; state.practiceMacRows[s2.id] = [];
+
+    addLink(s1.id, hs.A); addLink(s1.id, hs.B); addLink(s1.id, hs.C); addLink(s1.id, hs.D);
+    addLink(s1.id, s2.id);
+    addLink(s2.id, hs.E); addLink(s2.id, hs.F); addLink(s2.id, hs.G);
+
+    const setPort = (deviceId, otherId, port) => {
+      const link = state.links.find(l => (l.a === deviceId && l.b === otherId) || (l.a === otherId && l.b === deviceId));
+      if (!link) return;
+      if (link.a === deviceId) link.portA = port; else link.portB = port;
+    };
+    setPort(s1.id, hs.C, 'P4'); setPort(s1.id, hs.D, 'P5'); setPort(s1.id, s2.id, 'P6');
+    setPort(s2.id, hs.F, 'P4'); setPort(s2.id, hs.G, 'P6');
+
+    const flows = [['A','B'],['F','A'],['B','A'],['D','A'],['E','B'],['G','E'],['C','F'],['B','G'],['G','F'],['A','B']];
+    state.traffic = flows.map(([src, dst]) => ({ src: hs[src], dst: hs[dst] }));
+
+    state.activeTab = 'topologia';
+    state.mode = 'select';
+    scheduleSave();
+    render();
+  }
+
+  function generateRandomTraffic(length, allowSameHost) {
+    const hs = hosts();
+    if (hs.length < 2) return;
+    length = clamp(Math.round(length) || 1, 1, 200);
+    const arr = [];
+    for (let i = 0; i < length; i++) {
+      let srcIdx = Math.floor(Math.random() * hs.length);
+      let dstIdx = Math.floor(Math.random() * hs.length);
+      let attempts = 0;
+      while (dstIdx === srcIdx && !allowSameHost && attempts < 20) {
+        dstIdx = Math.floor(Math.random() * hs.length);
+        attempts++;
+      }
+      if (dstIdx === srcIdx) {
+        dstIdx = (srcIdx + 1) % hs.length;
+        if (dstIdx === srcIdx) continue;
+      }
+      arr.push({ src: hs[srcIdx].id, dst: hs[dstIdx].id });
+    }
+    state.traffic = arr;
+    invalidateSimulation();
+    scheduleSave();
+    render();
+  }
+
+  /* ---------- Persistencia ---------- */
+  let saveTimer = null;
+  function scheduleSave() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(persist, 250);
+  }
+  function persist() {
+    try {
+      const data = {
+        version: 1,
+        nodes: state.nodes,
+        links: state.links,
+        traffic: state.traffic,
+        nextNode: state.nextNode,
+        nextLink: state.nextLink,
+        activeTab: state.activeTab,
+        practiceHostAnswers: state.practiceHostAnswers,
+        practiceMacRows: state.practiceMacRows,
+        zoom: state.zoom,
+        panX: state.panX,
+        panY: state.panY
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    } catch (err) {
+      console.warn('No se pudo guardar en localStorage:', err);
+    }
+  }
+  function loadFromStorage() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return false;
+      const data = JSON.parse(raw);
+      if (!data || !Array.isArray(data.nodes)) return false;
+      state.nodes = data.nodes.map(n => {
+        // Compatibilidad: nodos sin color
+        if (!n.color) n.color = n.type === 'host' ? HOST_COLOR : nextDeviceColorFrom(nodesSoFar(state.nodes, n));
+        return n;
+      });
+      state.links = Array.isArray(data.links) ? data.links : [];
+      state.traffic = Array.isArray(data.traffic) ? data.traffic : [];
+      state.nextNode = data.nextNode || (state.nodes.length + 1);
+      state.nextLink = data.nextLink || (state.links.length + 1);
+      state.practiceHostAnswers = data.practiceHostAnswers || {};
+      state.practiceMacRows = data.practiceMacRows || {};
+      state.activeTab = data.activeTab || 'topologia';
+      state.zoom = Number.isFinite(data.zoom) ? data.zoom : 1;
+      state.panX = Number.isFinite(data.panX) ? data.panX : 0;
+      state.panY = Number.isFinite(data.panY) ? data.panY : 0;
+      switches().forEach(sw => { if (!state.practiceMacRows[sw.id]) state.practiceMacRows[sw.id] = []; });
+      return true;
+    } catch (err) {
+      console.warn('No se pudo leer localStorage:', err);
+      return false;
+    }
+  }
+  // Helper para asignar color a nodos viejos sin color
+  function nodesSoFar(list, target) {
+    const idx = list.indexOf(target);
+    return idx < 0 ? [] : list.slice(0, idx);
+  }
+  function nextDeviceColorFrom(prevNodes) {
+    const used = prevNodes.filter(n => n && n.type !== 'host' && n.color).map(n => n.color);
+    for (const c of DEVICE_PALETTE) if (!used.includes(c)) return c;
+    return DEVICE_PALETTE[prevNodes.filter(n => n.type !== 'host').length % DEVICE_PALETTE.length];
+  }
+
+  /* ---------- Simulación ---------- */
+  function cloneTables(t) { const c = {}; for (const [k, v] of Object.entries(t)) c[k] = { ...v }; return c; }
+  function emptyTables() { const r = {}; switches().forEach(sw => r[sw.id] = {}); return r; }
+
+  function simulateFrame(frame, tables, index) {
+    const src = nodeById(frame.src), dst = nodeById(frame.dst);
+    const seen = new Set();
+    const events = [];
+    if (!src || !dst) return { index, src, dst, seen, events: ['Origen o destino inexistente.'], tables: cloneTables(tables), unreachable: true };
+    seen.add(src.id);
+    events.push(`${src.label} transmite una trama con MAC origen ${src.mac} y MAC destino ${dst.mac}.`);
+
+    const sourceLinks = linksFor(src.id);
+    if (sourceLinks.length === 0) {
+      events.push(`${src.label} no está conectado a la red.`);
+      return { index, src, dst, seen, events, tables: cloneTables(tables), unreachable: true };
+    }
+
+    const queue = sourceLinks.map(link => ({ link, from: src.id }));
+    let reachedDestination = false;
+
+    while (queue.length) {
+      const signal = queue.shift();
+      const receiverId = otherEnd(signal.link, signal.from);
+      const receiver = nodeById(receiverId);
+      if (!receiver) continue;
+
+      if (receiver.type === 'host') {
+        seen.add(receiver.id);
+        events.push(`${receiver.label} recibe físicamente la trama por ${portAt(signal.link, receiver.id)}${receiver.id === dst.id ? ' (es el destino).' : ' (su interfaz la descarta si la MAC destino no coincide).'}`);
+        if (receiver.id === dst.id) reachedDestination = true;
+        continue;
+      }
+
+      if (receiver.type === 'hub') {
+        const outputs = linksFor(receiver.id).filter(l => l.id !== signal.link.id);
+        events.push(`${receiver.label} repite la trama por ${outputs.length} puerto(s), excepto el de entrada.`);
+        outputs.forEach(link => queue.push({ link, from: receiver.id }));
+        continue;
+      }
+
+      if (receiver.type === 'switch') {
+        const incomingPort = portAt(signal.link, receiver.id);
+        tables[receiver.id][src.mac] = incomingPort;
+        events.push(`${receiver.label} aprende ${src.mac} por ${incomingPort}.`);
+
+        const destPort = tables[receiver.id][dst.mac];
+        const available = linksFor(receiver.id).filter(l => l.id !== signal.link.id);
+        let outputs = [];
+
+        if (destPort) {
+          if (destPort === incomingPort) {
+            events.push(`${receiver.label} ya conoce el destino por el mismo puerto de entrada: filtra la trama.`);
+          } else {
+            const selected = linksFor(receiver.id).find(l => portAt(l, receiver.id) === destPort);
+            if (selected) {
+              outputs = [selected];
+              events.push(`${receiver.label} conoce el destino por ${destPort}: reenvía solo por ese puerto.`);
+            } else {
+              outputs = available;
+              events.push(`${receiver.label} tiene una entrada desactualizada: inunda los demás puertos.`);
+            }
+          }
+        } else {
+          outputs = available;
+          events.push(`${receiver.label} desconoce la MAC destino: inunda por ${outputs.length} puerto(s), excepto el de entrada.`);
+        }
+        outputs.forEach(link => queue.push({ link, from: receiver.id }));
+      }
+    }
+
+    if (!reachedDestination) events.push(`La trama no llegó a ${dst.label}. Revisá que origen y destino estén conectados.`);
+    return { index, src, dst, seen, events, tables: cloneTables(tables), unreachable: !reachedDestination };
+  }
+
+  function calculateAll() {
+    const tables = emptyTables();
+    const results = [];
+    state.traffic.forEach((frame, i) => results.push(simulateFrame(frame, tables, i)));
+    return { results, tables: cloneTables(tables) };
+  }
+
+  function ensureSimulation() {
+    if (state.simResults.length === 0 && state.traffic.length) {
+      const tables = emptyTables();
+      state.simResults = [];
+      state.simIndex = 0;
+      state.traffic.forEach((frame, i) => {
+        state.simResults.push(simulateFrame(frame, tables, i));
+      });
+    }
+  }
+  function currentTables() {
+    if (state.simIndex === 0) return emptyTables();
+    return cloneTables(state.simResults[state.simIndex - 1].tables);
+  }
+  function processNext() {
+    if (state.simIndex < state.traffic.length) { ensureSimulation(); state.simIndex++; render(); }
+  }
+  function processAll() { ensureSimulation(); state.simIndex = state.traffic.length; render(); }
+  function resetSimulation() { state.simResults = []; state.simIndex = 0; render(); }
+
+  /* ---------- Geometría / transformación ---------- */
+  function contentBounds() {
+    if (!state.nodes.length) return { minX: -200, minY: -200, maxX: 700, maxY: 300 };
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    state.nodes.forEach(n => {
+      minX = Math.min(minX, n.x - NODE_W/2); maxX = Math.max(maxX, n.x + NODE_W/2);
+      minY = Math.min(minY, n.y - NODE_H/2); maxY = Math.max(maxY, n.y + NODE_H/2);
+    });
+    return { minX, minY, maxX, maxY };
+  }
+
+  function baseViewBox() {
+    const b = contentBounds();
+    const pad = PAD;
+    const x = b.minX - pad;
+    const y = b.minY - pad;
+    const w = Math.max(900, (b.maxX - b.minX) + pad * 2);
+    const h = Math.max(550, (b.maxY - b.minY) + pad * 2);
+    return { x, y, w, h };
+  }
+
+  function currentViewBox() {
+    const base = baseViewBox();
+    const cx = base.x + base.w / 2;
+    const cy = base.y + base.h / 2;
+    const w = base.w / state.zoom;
+    const h = base.h / state.zoom;
+    const x = cx - w / 2 + state.panX;
+    const y = cy - h / 2 + state.panY;
+    return { x, y, w, h };
+  }
+
+  function clientToWorld(svg, clientX, clientY) {
+    const rect = svg.getBoundingClientRect();
+    const vb = svg.viewBox.baseVal;
+    const nx = (clientX - rect.left) / rect.width;
+    const ny = (clientY - rect.top) / rect.height;
+    return { x: vb.x + nx * vb.width, y: vb.y + ny * vb.height };
+  }
+
+  /* ---------- Render diagrama ---------- */
+  function renderZoomToolbar() {
+    return `<div class="zoom-toolbar">
+      <button class="zoom-btn" data-action="zoom-out" title="Alejar (−)">−</button>
+      <button class="zoom-btn wide" data-action="zoom-reset" title="Restablecer zoom y posición">${Math.round(state.zoom*100)}%</button>
+      <button class="zoom-btn" data-action="zoom-in" title="Acercar (+)">+</button>
+    </div>`;
+  }
+
+  function linkMidpoint(a, b) {
+    return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  }
+
+  // Etiqueta SVG del enlace
+  function linkLabelSVG(l, a, b) {
+    const p = linkParts(l);
+    const mid = linkMidpoint(a, b);
+    if (!p.aHasPort && !p.bHasPort) {
+      const txt = '?';
+      const w = 60;
+      return `<rect x="${mid.x - w/2}" y="${mid.y - 13}" width="${w}" height="26" rx="8" fill="#fff" stroke="#dbe3ef" pointer-events="none"/>
+        <text x="${mid.x}" y="${mid.y + 4}" text-anchor="middle" font-size="11" fill="#475569" pointer-events="none">${txt}</text>`;
+    }
+    if (p.aHasPort && p.bHasPort) {
+      const sep = ' ↔ ';
+      const totalChars = p.aPort.length + sep.length + p.bPort.length;
+      const w = Math.max(80, totalChars * 6.5 + 16);
+      return `<rect x="${mid.x - w/2}" y="${mid.y - 13}" width="${w}" height="26" rx="8" fill="#fff" stroke="#dbe3ef" pointer-events="none"/>
+        <text x="${mid.x}" y="${mid.y + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="#475569" pointer-events="none">
+          <tspan fill="${p.aColor}">${esc(p.aPort)}</tspan><tspan fill="#94a3b8">${esc(sep)}</tspan><tspan fill="${p.bColor}">${esc(p.bPort)}</tspan>
+        </text>`;
+    }
+    const portText = p.aHasPort ? p.aPort : p.bPort;
+    const color = p.aHasPort ? p.aColor : p.bColor;
+    const w = Math.max(50, portText.length * 7 + 16);
+    return `<rect x="${mid.x - w/2}" y="${mid.y - 13}" width="${w}" height="26" rx="8" fill="#fff" stroke="#dbe3ef" pointer-events="none"/>
+      <text x="${mid.x}" y="${mid.y + 4}" text-anchor="middle" font-size="12" font-weight="700" fill="${color}" pointer-events="none">${esc(portText)}</text>`;
+  }
+
+  function renderTopology(opts = {}) {
+    const { readOnly = false } = opts;
+    if (!state.nodes.length) {
+      const vb = currentViewBox();
+      return `<div style="position:relative">
+        ${renderZoomToolbar()}
+        <svg id="topology"${readOnly ? ' class="readonly"' : ''} viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" style="display:block;background:#fbfdff;width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
+          <text x="${vb.x + vb.w/2}" y="${vb.y + vb.h/2 - 15}" text-anchor="middle" fill="#94a3b8" font-size="16">Elegí «+ Host», «+ Switch» o «+ Hub» arriba</text>
+          <text x="${vb.x + vb.w/2}" y="${vb.y + vb.h/2 + 12}" text-anchor="middle" fill="#94a3b8" font-size="14">y hacé clic en el lienzo para agregar el primer dispositivo</text>
+        </svg>
+      </div>`;
+    }
+
+    const vb = currentViewBox();
+
+    const lines = state.links.map(l => {
+      const a = nodeById(l.a), b = nodeById(l.b);
+      if (!a || !b) return '';
+      return `<g data-link-id="${l.id}">
+        <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${LINK_COLOR}" stroke-width="3"/>
+        <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="transparent" stroke-width="18" pointer-events="stroke"/>
+        ${linkLabelSVG(l, a, b)}
+      </g>`;
+    }).join('');
+
+    const boxes = state.nodes.map(n => {
+      const c = colorFor(n);
+      const fill = lighten(c, 0.87);
+      const stroke = c;
+      const sub = n.type === 'host' ? n.mac : typeLabel(n.type);
+      const srcClass = state.connectFrom === n.id ? ' connect-source' : '';
+      // En el caso del connect-source usamos stroke más grueso (via CSS) y mismo color
+      return `<g class="node-group${srcClass}" data-node-id="${n.id}">
+        <rect x="${n.x - NODE_W/2}" y="${n.y - NODE_H/2}" width="${NODE_W}" height="${NODE_H}" rx="14" fill="${fill}" stroke="${stroke}" stroke-width="2"/>
+        <text x="${n.x}" y="${n.y - 5}" text-anchor="middle" font-size="15" font-weight="700" fill="#172033" pointer-events="none">${esc(n.label)}</text>
+        <text x="${n.x}" y="${n.y + 18}" text-anchor="middle" font-size="11" fill="#475569" pointer-events="none">${esc(sub)}</text>
+      </g>`;
+    }).join('');
+
+    return `<div style="position:relative">
+      ${renderZoomToolbar()}
+      <svg id="topology" ${readOnly ? 'class="readonly"' : 'class="panning"'} viewBox="${vb.x} ${vb.y} ${vb.w} ${vb.h}" style="display:block;background:#fbfdff;width:100%;height:auto" preserveAspectRatio="xMidYMid meet">
+        <g>${lines}${boxes}</g>
+      </svg>
+    </div>`;
+  }
+
+  function updateNodeDOM(node) {
+    const svg = document.getElementById('topology');
+    if (!svg) return;
+    const g = svg.querySelector(`[data-node-id="${node.id}"]`);
+    if (g) {
+      const rect = g.querySelector('rect');
+      if (rect) { rect.setAttribute('x', node.x - NODE_W/2); rect.setAttribute('y', node.y - NODE_H/2); }
+      const texts = g.querySelectorAll('text');
+      if (texts[0]) { texts[0].setAttribute('x', node.x); texts[0].setAttribute('y', node.y - 5); }
+      if (texts[1]) { texts[1].setAttribute('x', node.x); texts[1].setAttribute('y', node.y + 18); }
+    }
+    state.links.forEach(l => {
+      if (l.a !== node.id && l.b !== node.id) return;
+      const a = nodeById(l.a), b = nodeById(l.b);
+      if (!a || !b) return;
+      const lg = svg.querySelector(`[data-link-id="${l.id}"]`);
+      if (!lg) return;
+      lg.querySelectorAll('line').forEach(line => {
+        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+      });
+      const mid = linkMidpoint(a, b);
+      const rectEl = lg.querySelector('rect');
+      const textEl = lg.querySelector('text');
+      if (rectEl && textEl) {
+        const p = linkParts(l);
+        let labelW;
+        if (p.aHasPort && p.bHasPort) {
+          labelW = Math.max(80, (p.aPort.length + 3 + p.bPort.length) * 6.5 + 16);
+        } else if (p.aHasPort || p.bHasPort) {
+          labelW = Math.max(50, (p.aHasPort ? p.aPort : p.bPort).length * 7 + 16);
+        } else {
+          labelW = 60;
+        }
+        rectEl.setAttribute('x', mid.x - labelW/2);
+        rectEl.setAttribute('y', mid.y - 13);
+        rectEl.setAttribute('width', labelW);
+        textEl.setAttribute('x', mid.x);
+        textEl.setAttribute('y', mid.y + 4);
+      }
+    });
+  }
+
+  function updateViewBox() {
+    const svg = document.getElementById('topology');
+    if (!svg) return;
+    const vb = currentViewBox();
+    svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+  }
+
+  /* ---------- Render pestañas ---------- */
+  function renderConnections() {
+    if (!state.links.length) return `<p class="muted small">No hay enlaces todavía.</p>`;
+    return `<div class="connection-list">${state.links.map(l => {
+      return `<div class="connection">${linkLabelHTML(l)} <button class="icon-btn" data-action="remove-link" data-id="${l.id}" title="Eliminar enlace">×</button></div>`;
+    }).join('')}</div>`;
+  }
+  function renderNodeList() {
+    if (!state.nodes.length) return `<p class="muted small">No hay dispositivos.</p>`;
+    return `<div class="stack">${state.nodes.map(n => {
+      const c = colorFor(n);
+      return `<div class="item">
+        <div class="item-main">
+          <div class="item-title">
+            <span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:${c};margin-right:7px;vertical-align:middle"></span>
+            ${esc(n.label)} <span class="pill ${n.type}">${typeLabel(n.type)}</span>
+          </div>
+          <div class="muted small">${n.type === 'host' ? n.mac : `${linksFor(n.id).length} conexión(es)`}</div>
+        </div>
+        <button class="icon-btn" data-action="remove-node" data-id="${n.id}" title="Eliminar">Eliminar</button>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  function modeButton(m, label) {
+    return `<button class="mode-btn ${state.mode === m ? 'active' : ''}" data-mode="${m}">${label}</button>`;
+  }
+  function modeHint() {
+    switch (state.mode) {
+      case 'add-host': return 'Hacé clic en el lienzo para colocar un Host.';
+      case 'add-switch': return 'Hacé clic en el lienzo para colocar un Switch.';
+      case 'add-hub': return 'Hacé clic en el lienzo para colocar un Hub.';
+      case 'connect': return state.connectFrom ? 'Ahora hacé clic en el dispositivo destino.' : 'Hacé clic en el dispositivo de origen y luego en el destino.';
+      case 'delete': return 'Hacé clic en un dispositivo o enlace para eliminarlo.';
+      default: return 'Arrastrá un dispositivo para moverlo. Arrastrá el fondo para desplazar la vista. Rueda del mouse para zoom.';
+    }
+  }
+
+  function renderTopologyTab() {
+    return `<div class="card">
+      <div class="section-head">
+        <h2 style="margin:0">Diagrama físico</h2>
+        <div class="mode-toolbar">
+          ${modeButton('select', 'Seleccionar')}
+          ${modeButton('add-host', '+ Host')}
+          ${modeButton('add-switch', '+ Switch')}
+          ${modeButton('add-hub', '+ Hub')}
+          ${modeButton('connect', 'Conectar')}
+          ${modeButton('delete', 'Eliminar')}
+        </div>
+      </div>
+      <p class="muted small" style="margin:0 0 10px">${modeHint()}</p>
+      <div class="topology-wrap">${renderTopology()}</div>
+      <div class="legend">
+        <span class="l-host">Host</span>
+        <span style="display:inline-flex;align-items:center;gap:5px">
+          <span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#dc2626"></span>
+          <span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#2563eb"></span>
+          <span style="display:inline-block;width:11px;height:11px;border-radius:3px;background:#9333ea"></span>
+          …
+          Switch/Hub (cada uno con su color)
+        </span>
+      </div>
+      ${state.message ? `<div class="notice ${state.message.kind === 'error' ? 'error' : state.message.kind === 'warn' ? 'warn' : ''}">${esc(state.message.text)}</div>` : ''}
+      <div class="actions">
+        <button class="btn secondary" data-action="load-example">Cargar ejemplo</button>
+        <button class="btn ghost" data-action="clear-topology">Vaciar topología</button>
+      </div>
+      <p class="muted small" style="margin-top:10px">Tu configuración se guarda automáticamente en este navegador.</p>
+    </div>
+    <div class="layout">
+      <section>
+        <div class="card">
+          <h2>Dispositivos (${state.nodes.length})</h2>
+          ${renderNodeList()}
+        </div>
+      </section>
+      <section>
+        <div class="card">
+          <h2>Enlaces actuales</h2>
+          ${renderConnections()}
+          <h3 style="margin-top:16px">Cómo se interpreta</h3>
+          <div class="notice">Un switch aprende la MAC de origen por el puerto por el que entra la trama. Si desconoce la MAC destino, inunda los demás puertos; si la conoce, reenvía solo por el puerto correspondiente.</div>
+          <div class="notice warn">Un hub no aprende direcciones: repite la señal por todos sus otros puertos.</div>
+        </div>
+      </section>
+    </div>`;
+  }
+
+  function renderHostOptions(selected = '') {
+    return hosts().map(n => `<option value="${n.id}" ${n.id === selected ? 'selected' : ''}>${esc(n.label)} — ${esc(n.mac)}</option>`).join('');
+  }
+  function renderTrafficList() {
+    if (!state.traffic.length) return `<p class="muted small">Todavía no definiste ninguna transmisión.</p>`;
+    return `<div class="stack">${state.traffic.map((t, i) => {
+      const s = nodeById(t.src), d = nodeById(t.dst);
+      return `<div class="sequence-row"><span class="sequence-number">${i + 1}</span><div><strong>${esc(s?.label || '?')}</strong><span class="arrow">→</span><strong>${esc(d?.label || '?')}</strong><div class="muted small">${s?.mac || ''} → ${d?.mac || ''}</div></div><button class="icon-btn" data-action="remove-traffic" data-index="${i}">Quitar</button></div>`;
+    }).join('')}</div>`;
+  }
+  function renderHostMatrix(results) {
+    const hs = hosts();
+    if (!results.length) return `<p class="muted small">Avanzá al menos una trama para construir esta tabla.</p>`;
+    return `<div class="table-wrap"><table><thead><tr><th>Trama</th>${hs.map(h => `<th>${esc(h.label)}</th>`).join('')}</tr></thead><tbody>${results.map(r => `<tr><td><strong>${r.index + 1}. ${esc(r.src?.label || '?')} → ${esc(r.dst?.label || '?')}</strong></td>${hs.map(h => `<td>${r.seen.has(h.id) ? '<span class="yes">✓</span>' : '<span class="no">—</span>'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  function renderSwitchTables(tables) {
+    const sws = switches();
+    if (!sws.length) return `<p class="muted small">No hay switches en esta topología.</p>`;
+    return `<div class="switch-tables">${sws.map(sw => {
+      const c = colorFor(sw);
+      const entries = Object.entries(tables[sw.id] || {}).sort((a, b) => a[0].localeCompare(b[0]));
+      return `<div class="switch-card" style="border-color:${c}">
+        <strong>
+          <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c};margin-right:7px;vertical-align:middle"></span>
+          ${esc(sw.label)}
+        </strong>
+        <span class="muted small"> · Tabla MAC</span>
+        <div class="table-wrap"><table><thead><tr><th>MAC</th><th>Puerto</th></tr></thead><tbody>${entries.length ? entries.map(([m, p]) => `<tr><td>${esc(m)}</td><td><strong>${esc(p)}</strong></td></tr>`).join('') : `<tr><td colspan="2" class="muted">Vacía</td></tr>`}</tbody></table></div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  function renderCurrentEvents() {
+    if (state.simIndex === 0) return `<div class="notice">Todavía no se procesó ninguna trama.</div>`;
+    const r = state.simResults[state.simIndex - 1];
+    return `<div class="result-box"><strong>Trama ${r.index + 1}: ${esc(r.src?.label || '?')} → ${esc(r.dst?.label || '?')}</strong><span class="muted small">${r.unreachable ? 'No llegó al destino' : 'Procesada'}</span><ol class="event-list">${r.events.map(e => `<li>${esc(e)}</li>`).join('')}</ol></div>`;
+  }
+  function renderSimulationTab() {
+    const hasHosts = hosts().length >= 2;
+    const current = state.simResults.slice(0, state.simIndex);
+    const pct = state.traffic.length ? Math.round(state.simIndex / state.traffic.length * 100) : 0;
+    return `<div class="card">
+      <details open>
+        <summary style="font-weight:750;font-size:15px;">Ver topología de la red</summary>
+        <div class="topology-wrap compact" style="margin-top:12px;">${renderTopology({ readOnly: true })}</div>
+      </details>
+    </div>
+    <div class="layout">
+      <section>
+        <div class="card">
+          <h2>Secuencia de comunicación</h2>
+          ${!hasHosts ? '<div class="notice warn">Agregá al menos dos hosts.</div>' : ''}
+          <div class="row-fields">
+            <div class="field"><label for="traffic-src">Origen</label><select id="traffic-src" ${!hasHosts ? 'disabled' : ''}>${renderHostOptions()}</select></div>
+            <div class="field"><label for="traffic-dst">Destino</label><select id="traffic-dst" ${!hasHosts ? 'disabled' : ''}>${renderHostOptions(hosts()[1]?.id || '')}</select></div>
+          </div>
+          <div class="actions"><button class="btn" data-action="add-traffic" ${!hasHosts ? 'disabled' : ''}>Agregar transmisión</button></div>
+          <div class="row-fields three" style="margin-top:14px">
+            <div class="field"><label for="random-length">Longitud de la secuencia aleatoria</label><input id="random-length" type="number" min="1" max="200" value="${Math.max(1, state.traffic.length || 6)}" ${!hasHosts ? 'disabled' : ''}></div>
+            <div class="field"><label>&nbsp;</label><button class="btn secondary" data-action="random-traffic" ${!hasHosts ? 'disabled' : ''}>Generar aleatoria</button></div>
+            <div class="field"><label>&nbsp;</label><button class="btn ghost" data-action="clear-traffic" ${!state.traffic.length ? 'disabled' : ''}>Vaciar secuencia</button></div>
+          </div>
+          <p class="muted small" style="margin-top:8px">Reemplaza la secuencia actual por tramas aleatorias entre los hosts existentes.</p>
+          <div style="margin-top:15px">${renderTrafficList()}</div>
+        </div>
+        <div class="card">
+          <h2>Controles de simulación</h2>
+          <div class="toolbar">
+            <button class="btn" data-action="step" ${state.simIndex >= state.traffic.length || !state.traffic.length ? 'disabled' : ''}>Avanzar una trama</button>
+            <button class="btn secondary" data-action="all" ${!state.traffic.length ? 'disabled' : ''}>Simular todo</button>
+            <button class="btn ghost" data-action="reset-sim" ${!state.simIndex ? 'disabled' : ''}>Reiniciar</button>
+          </div>
+          <div class="progress"><div style="width:${pct}%"></div></div>
+          <div class="muted small">${state.simIndex} de ${state.traffic.length} tramas procesadas</div>
+          ${state.message ? `<div class="notice ${state.message.kind === 'error' ? 'error' : state.message.kind === 'warn' ? 'warn' : ''}">${esc(state.message.text)}</div>` : ''}
+        </div>
+      </section>
+      <section>
+        <div class="card">
+          <h2>Qué ocurrió en esta trama</h2>
+          ${renderCurrentEvents()}
+        </div>
+        <div class="card">
+          <div class="section-head"><h2 style="margin:0">Hosts que ven cada trama</h2><span class="muted small">Hasta el paso actual</span></div>
+          ${renderHostMatrix(current)}
+        </div>
+        <div class="card">
+          <div class="section-head"><h2 style="margin:0">Tablas MAC de los switches</h2><span class="muted small">Estado actual</span></div>
+          ${renderSwitchTables(currentTables())}
+        </div>
+      </section>
+    </div>`;
+  }
+
+  /* ---------- Práctica ---------- */
+  function ensurePracticeRows() {
+    switches().forEach(sw => { if (!state.practiceMacRows[sw.id]) state.practiceMacRows[sw.id] = []; });
+  }
+  function renderPracticeHostTable() {
+    if (!state.traffic.length) return `<div class="notice warn">Primero agregá una secuencia de comunicaciones en la pestaña «Tráfico y simulación».</div>`;
+    const hs = hosts();
+    return `<div class="table-wrap"><table><thead><tr><th>Trama</th>${hs.map(h => `<th>${esc(h.label)}</th>`).join('')}</tr></thead><tbody>${state.traffic.map((t, i) => `<tr><td><strong>${i + 1}. ${esc(nodeById(t.src)?.label || '?')} → ${esc(nodeById(t.dst)?.label || '?')}</strong></td>${hs.map(h => `<td class="practice-cell"><input type="checkbox" data-practice-host="${i}" data-host="${h.id}" ${(state.practiceHostAnswers[i] || []).includes(h.id) ? 'checked' : ''}></td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  }
+  function renderManualMacTables() {
+    if (!switches().length) return `<p class="muted small">No hay switches para completar.</p>`;
+    ensurePracticeRows();
+    return `<div class="switch-tables">${switches().map(sw => {
+      const c = colorFor(sw);
+      const rows = state.practiceMacRows[sw.id] || [];
+      const ports = portOptions(sw.id);
+      return `<div class="switch-card" style="border-color:${c}">
+        <strong>
+          <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${c};margin-right:7px;vertical-align:middle"></span>
+          ${esc(sw.label)}
+        </strong>
+        <div class="muted small">Completá su tabla MAC final</div>
+        ${rows.map((r, i) => `<div class="manual-row"><select data-mac-host="${sw.id}" data-row="${i}"><option value="">MAC / host...</option>${renderHostOptions(r.hostId)}</select><select data-mac-port="${sw.id}" data-row="${i}"><option value="">Puerto...</option>${ports.map(p => `<option value="${esc(p.value)}" ${p.value === r.port ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select><button class="icon-btn" data-action="remove-mac-row" data-switch="${sw.id}" data-row="${i}">×</button></div>`).join('')}
+        <button class="btn secondary" data-action="add-mac-row" data-switch="${sw.id}">+ Agregar entrada</button>
+      </div>`;
+    }).join('')}</div>`;
+  }
+  function renderPracticeFeedback() {
+    const r = state.practiceResult;
+    if (!r) return '';
+    return `<div class="feedback ${r.ok ? 'good' : 'bad'}"><strong>${r.ok ? '¡Todo correcto!' : 'Resultado de la corrección'}</strong><p>${r.hostCorrect}/${r.hostTotal} casillas correctas en la tabla de hosts.</p><p>${r.macCorrect}/${r.macTotal} entradas MAC correctas en las tablas de switches.</p>${r.notes.length ? `<ul>${r.notes.map(n => `<li>${esc(n)}</li>`).join('')}</ul>` : '<p>Las dos partes coinciden con la simulación.</p>'}</div>`;
+  }
+  function renderPracticeTab() {
+    return `<div class="card">
+      <details open>
+        <summary style="font-weight:750;font-size:15px;">Ver topología de la red</summary>
+        <div class="topology-wrap compact" style="margin-top:12px;">${renderTopology({ readOnly: true })}</div>
+      </details>
+    </div>
+    <div class="card">
+      <div class="section-head"><h2 style="margin:0">Modo práctica</h2><button class="btn secondary" data-action="reset-practice">Borrar mis respuestas</button></div>
+      <p class="muted">Sin mirar la simulación, completá qué hosts ven cada trama y cómo quedan las tablas MAC al terminar toda la secuencia. Después comprobá tus respuestas.</p>
+      <h3>1. Hosts que ven pasar cada trama</h3>
+      <p class="muted small">Marcá las interfaces que transmiten o reciben físicamente cada trama. El host origen también cuenta.</p>
+      ${renderPracticeHostTable()}
+      <h3 style="margin-top:20px">2. Tabla MAC final de cada switch</h3>
+      <p class="muted small">Agregá una fila por cada MAC aprendida y elegí el puerto por el que se aprendió.</p>
+      ${renderManualMacTables()}
+      <div class="actions"><button class="btn" data-action="check-practice" ${!state.traffic.length ? 'disabled' : ''}>Comprobar respuestas</button></div>
+      ${renderPracticeFeedback()}
+    </div>`;
+  }
+
+  /* ---------- Modal ---------- */
+  function renderPortModal() {
+    const p = state.pendingLink;
+    if (!p) return '';
+    const na = nodeById(p.from), nb = nodeById(p.to);
+    if (!na || !nb) return '';
+    const needsA = na.type !== 'host';
+    const needsB = nb.type !== 'host';
+    const availA = needsA ? availablePorts(p.from) : ['eth0'];
+    const availB = needsB ? availablePorts(p.to) : ['eth0'];
+    const ca = colorFor(na), cb = colorFor(nb);
+    return `<div class="modal-backdrop">
+      <div class="modal">
+        <h3>Elegir puertos para el enlace</h3>
+        <p class="muted small">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${ca};margin-right:5px;vertical-align:middle"></span>${esc(na.label)}
+          ↔
+          <span style="display:inline-block;width:10px;height:10px;border-radius:3px;background:${cb};margin-right:5px;vertical-align:middle"></span>${esc(nb.label)}
+        </p>
+        <div class="row-fields">
+          ${needsA ? `<div class="field"><label>Puerto de ${esc(na.label)}</label><select data-pending-port-a>${availA.map(x => `<option ${x === p.portA ? 'selected' : ''}>${x}</option>`).join('')}</select></div>` : `<div class="field"><label>Interfaz de ${esc(na.label)}</label><input value="eth0" disabled></div>`}
+          ${needsB ? `<div class="field"><label>Puerto de ${esc(nb.label)}</label><select data-pending-port-b>${availB.map(x => `<option ${x === p.portB ? 'selected' : ''}>${x}</option>`).join('')}</select></div>` : `<div class="field"><label>Interfaz de ${esc(nb.label)}</label><input value="eth0" disabled></div>`}
+        </div>
+        <div class="actions" style="justify-content:flex-end">
+          <button class="btn secondary" data-action="cancel-link">Cancelar</button>
+          <button class="btn" data-action="confirm-link">Crear enlace</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  function render() {
+    document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === state.activeTab));
+    let content;
+    if (state.activeTab === 'topologia') content = renderTopologyTab();
+    else if (state.activeTab === 'simulacion') content = renderSimulationTab();
+    else content = renderPracticeTab();
+    app.innerHTML = content + (state.pendingLink ? renderPortModal() : '');
+    scheduleSave();
+  }
+
+  function checkPractice() {
+    const { results, tables } = calculateAll();
+    let hostCorrect = 0, hostTotal = 0, macCorrect = 0, macTotal = 0;
+    const notes = [];
+    results.forEach((r, i) => hosts().forEach(h => {
+      const actual = (state.practiceHostAnswers[i] || []).includes(h.id);
+      const expected = r.seen.has(h.id);
+      hostTotal++;
+      if (actual === expected) hostCorrect++;
+      else if (expected) notes.push(`Trama ${i + 1}: faltó marcar ${h.label}.`);
+      else notes.push(`Trama ${i + 1}: ${h.label} no debería estar marcado.`);
+    }));
+    switches().forEach(sw => {
+      const expected = Object.entries(tables[sw.id] || {}).map(([m, p]) => `${m}|${p}`).sort();
+      const actual = (state.practiceMacRows[sw.id] || []).filter(r => r.hostId && r.port).map(r => `${nodeById(r.hostId)?.mac || '?'}|${r.port}`).sort();
+      const all = new Set([...expected, ...actual]);
+      all.forEach(entry => {
+        macTotal++;
+        if (expected.includes(entry) && actual.includes(entry)) macCorrect++;
+        else notes.push(`${sw.label}: entrada incorrecta o faltante (${entry.replace('|', ' por ')}).`);
+      });
+    });
+    state.practiceResult = { hostCorrect, hostTotal, macCorrect, macTotal, notes, ok: hostCorrect === hostTotal && macCorrect === macTotal };
+    render();
+  }
+
+  /* ---------- Zoom + Pan helpers ---------- */
+  function setZoomAt(newZoom, anchorClientX, anchorClientY) {
+    const svg = document.getElementById('topology');
+    if (!svg) { state.zoom = clamp(newZoom, ZOOM_MIN, ZOOM_MAX); return; }
+    const rect = svg.getBoundingClientRect();
+    const ax = anchorClientX ?? rect.left + rect.width / 2;
+    const ay = anchorClientY ?? rect.top + rect.height / 2;
+    const worldBefore = clientToWorld(svg, ax, ay);
+    const clamped = clamp(newZoom, ZOOM_MIN, ZOOM_MAX);
+    const base = baseViewBox();
+    const cxBase = base.x + base.w / 2;
+    const cyBase = base.y + base.h / 2;
+    const nx = (ax - rect.left) / rect.width;
+    const ny = (ay - rect.top) / rect.height;
+    const newW = base.w / clamped;
+    const newH = base.h / clamped;
+    state.zoom = clamped;
+    state.panX = worldBefore.x - nx * newW - cxBase + newW / 2;
+    state.panY = worldBefore.y - ny * newH - cyBase + newH / 2;
+    updateViewBox();
+    const pctBtn = svg.parentElement.querySelector('[data-action="zoom-reset"]');
+    if (pctBtn) pctBtn.textContent = `${Math.round(state.zoom * 100)}%`;
+    scheduleSave();
+  }
+
+  function resetZoomPan() {
+    state.zoom = 1;
+    state.panX = 0;
+    state.panY = 0;
+    updateViewBox();
+    const svg = document.getElementById('topology');
+    if (svg) {
+      const pctBtn = svg.parentElement.querySelector('[data-action="zoom-reset"]');
+      if (pctBtn) pctBtn.textContent = '100%';
+    }
+    scheduleSave();
+  }
+
+  /* ---------- Eventos ---------- */
+  document.querySelectorAll('.tab').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.activeTab = btn.dataset.tab;
+      state.message = null;
+      state.pendingLink = null;
+      state.connectFrom = null;
+      render();
+    });
+  });
+
+  app.addEventListener('click', e => {
+    if (e.target.matches('.modal-backdrop')) {
+      state.pendingLink = null;
+      render();
+      return;
+    }
+    const modeBtn = e.target.closest('[data-mode]');
+    if (modeBtn) {
+      state.mode = modeBtn.dataset.mode;
+      state.connectFrom = null;
+      state.message = null;
+      render();
+      return;
+    }
+    const button = e.target.closest('[data-action]');
+    if (!button) return;
+    const action = button.dataset.action;
+
+    if (action === 'zoom-in') { setZoomAt(state.zoom * ZOOM_STEP); return; }
+    if (action === 'zoom-out') { setZoomAt(state.zoom / ZOOM_STEP); return; }
+    if (action === 'zoom-reset') { resetZoomPan(); return; }
+
+    if (action === 'load-example') { loadExample(); }
+    else if (action === 'clear-topology') { clearAll(); render(); }
+    else if (action === 'remove-node') { removeNode(button.dataset.id); render(); }
+    else if (action === 'remove-link') { removeLink(button.dataset.id); render(); }
+    else if (action === 'add-traffic') {
+      const src = document.getElementById('traffic-src').value;
+      const dst = document.getElementById('traffic-dst').value;
+      if (!src || !dst) { state.message = { text: 'Elegí origen y destino.', kind: 'error' }; }
+      else if (src === dst) { state.message = { text: 'El origen y el destino deben ser distintos.', kind: 'error' }; }
+      else { state.traffic.push({ src, dst }); invalidateSimulation(); state.message = null; }
+      render();
+    }
+    else if (action === 'remove-traffic') { state.traffic.splice(Number(button.dataset.index), 1); invalidateSimulation(); render(); }
+    else if (action === 'clear-traffic') { state.traffic = []; invalidateSimulation(); render(); }
+    else if (action === 'random-traffic') {
+      const input = document.getElementById('random-length');
+      const len = Number(input?.value) || 6;
+      generateRandomTraffic(len, false);
+    }
+    else if (action === 'step') { processNext(); }
+    else if (action === 'all') { processAll(); }
+    else if (action === 'reset-sim') { resetSimulation(); }
+    else if (action === 'add-mac-row') {
+      const id = button.dataset.switch;
+      (state.practiceMacRows[id] ||= []).push({ hostId: '', port: '' });
+      state.practiceResult = null; render();
+    }
+    else if (action === 'remove-mac-row') {
+      const id = button.dataset.switch;
+      state.practiceMacRows[id].splice(Number(button.dataset.row), 1);
+      state.practiceResult = null; render();
+    }
+    else if (action === 'check-practice') { checkPractice(); }
+    else if (action === 'reset-practice') {
+      state.practiceHostAnswers = {};
+      switches().forEach(sw => state.practiceMacRows[sw.id] = []);
+      state.practiceResult = null; render();
+    }
+    else if (action === 'confirm-link') {
+      if (!state.pendingLink) return;
+      const { from, to, portA, portB } = state.pendingLink;
+      state.pendingLink = null;
+      const err = addLink(from, to, portA, portB);
+      state.message = err ? { text: err, kind: 'error' } : { text: 'Enlace creado.', kind: 'info' };
+      render();
+    }
+    else if (action === 'cancel-link') {
+      state.pendingLink = null;
+      state.message = null;
+      render();
+    }
+  });
+
+  app.addEventListener('change', e => {
+    const el = e.target;
+    if (el.matches('[data-pending-port-a]')) {
+      if (state.pendingLink) state.pendingLink.portA = el.value;
+    } else if (el.matches('[data-pending-port-b]')) {
+      if (state.pendingLink) state.pendingLink.portB = el.value;
+    } else if (el.matches('[data-practice-host]')) {
+      const i = el.dataset.practiceHost;
+      const id = el.dataset.host;
+      const arr = state.practiceHostAnswers[i] ||= [];
+      if (el.checked && !arr.includes(id)) arr.push(id);
+      if (!el.checked) state.practiceHostAnswers[i] = arr.filter(x => x !== id);
+      state.practiceResult = null;
+      scheduleSave();
+    } else if (el.matches('[data-mac-host]')) {
+      const row = state.practiceMacRows[el.dataset.macHost][Number(el.dataset.row)];
+      row.hostId = el.value; state.practiceResult = null; scheduleSave();
+    } else if (el.matches('[data-mac-port]')) {
+      const row = state.practiceMacRows[el.dataset.macPort][Number(el.dataset.row)];
+      row.port = el.value; state.practiceResult = null; scheduleSave();
+    }
+  });
+
+  /* Rueda del mouse: zoom centrado en el cursor */
+  app.addEventListener('wheel', e => {
+    const svg = e.target.closest('svg#topology');
+    if (!svg) return;
+    e.preventDefault();
+    const factor = e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
+    setZoomAt(state.zoom * factor, e.clientX, e.clientY);
+  }, { passive: false });
+
+  /* Lienzo interactivo */
+  let drag = null;
+  let rafId = null;
+
+  document.addEventListener('pointerdown', e => {
+    if (e.target.closest('.zoom-toolbar')) return;
+    const svg = e.target.closest('svg#topology');
+    if (!svg) return;
+    const isReadOnly = svg.classList.contains('readonly');
+
+    const nodeG = e.target.closest('[data-node-id]');
+    const linkG = e.target.closest('[data-link-id]');
+    const nodeId = nodeG ? nodeG.dataset.nodeId : null;
+    const linkId = linkG ? linkG.dataset.linkId : null;
+
+    if (isReadOnly) {
+      drag = { type: 'pan', startX: e.clientX, startY: e.clientY, startPanX: state.panX, startPanY: state.panY };
+      e.preventDefault();
+      return;
+    }
+
+    if (state.mode === 'delete') {
+      if (nodeId) { removeNode(nodeId); render(); }
+      else if (linkId) { removeLink(linkId); render(); }
+      return;
+    }
+
+    if (state.mode === 'add-host' || state.mode === 'add-switch' || state.mode === 'add-hub') {
+      if (!nodeId && !linkId) {
+        const { x, y } = clientToWorld(svg, e.clientX, e.clientY);
+        const type = state.mode.slice(4);
+        addNode(type, '', x, y);
+        state.message = null;
+        render();
+      }
+      return;
+    }
+
+    if (state.mode === 'connect') {
+      if (nodeId) {
+        if (!state.connectFrom) { state.connectFrom = nodeId; render(); }
+        else if (state.connectFrom === nodeId) { state.connectFrom = null; render(); }
+        else {
+          const from = state.connectFrom;
+          const to = nodeId;
+          const err = validateLink(from, to);
+          if (err) {
+            state.message = { text: err, kind: 'error' };
+            state.connectFrom = null;
+            render();
+            return;
+          }
+          const na = nodeById(from), nb = nodeById(to);
+          const availA = na.type === 'host' ? ['eth0'] : availablePorts(from);
+          const availB = nb.type === 'host' ? ['eth0'] : availablePorts(to);
+          if (!availA.length || !availB.length) {
+            state.message = { text: 'No hay puertos disponibles en uno de los dispositivos.', kind: 'error' };
+            state.connectFrom = null;
+            render();
+            return;
+          }
+          state.pendingLink = { from, to, portA: availA[0], portB: availB[0] };
+          state.connectFrom = null;
+          render();
+        }
+      } else {
+        state.connectFrom = null;
+        render();
+      }
+      return;
+    }
+
+    if (state.mode === 'select') {
+      if (nodeId) {
+        const { x, y } = clientToWorld(svg, e.clientX, e.clientY);
+        const node = nodeById(nodeId);
+        if (node) {
+          drag = { type: 'node', nodeId, offsetX: x - node.x, offsetY: y - node.y };
+          e.preventDefault();
+        }
+      } else if (!linkId) {
+        drag = { type: 'pan', startX: e.clientX, startY: e.clientY, startPanX: state.panX, startPanY: state.panY };
+        e.preventDefault();
+      }
+    }
+  });
+
+  document.addEventListener('pointermove', e => {
+    if (!drag) return;
+    if (rafId) return;
+    rafId = requestAnimationFrame(() => {
+      rafId = null;
+      if (!drag) return;
+      const svg = document.getElementById('topology');
+      if (!svg) return;
+      if (drag.type === 'pan') {
+        const rect = svg.getBoundingClientRect();
+        const vb = svg.viewBox.baseVal;
+        const dx = (e.clientX - drag.startX) / rect.width * vb.width;
+        const dy = (e.clientY - drag.startY) / rect.height * vb.height;
+        state.panX = drag.startPanX - dx;
+        state.panY = drag.startPanY - dy;
+        updateViewBox();
+      } else if (drag.type === 'node') {
+        const { x, y } = clientToWorld(svg, e.clientX, e.clientY);
+        const node = nodeById(drag.nodeId);
+        if (!node) return;
+        node.x = x - drag.offsetX;
+        node.y = y - drag.offsetY;
+        updateNodeDOM(node);
+      }
+    });
+  });
+
+  document.addEventListener('pointerup', () => { drag = null; scheduleSave(); });
+  document.addEventListener('pointercancel', () => { drag = null; scheduleSave(); });
+
+  document.addEventListener('dblclick', e => {
+    if (state.activeTab !== 'topologia') return;
+    const nodeG = e.target.closest('[data-node-id]');
+    if (!nodeG) return;
+    const node = nodeById(nodeG.dataset.nodeId);
+    if (!node) return;
+    const newLabel = prompt('Nuevo nombre:', node.label);
+    if (newLabel && newLabel.trim()) { node.label = newLabel.trim(); render(); }
+  });
+
+  /* ---------- Boot ---------- */
+  if (!loadFromStorage()) {
+    loadExample();
+  } else {
+    render();
+  }
+})();
+</script>
+</body>
+</html>

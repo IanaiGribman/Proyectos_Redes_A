@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Práctica IPv4 - Múltiples Módulos</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+
+  <style>
+    body { background-color: #f4f6f8; padding-top: 2rem; padding-bottom: 2rem; }
+    .nav-tabs .nav-link { font-weight: bold; color: #495057; }
+    .nav-tabs .nav-link.active { color: #0d6efd; }
+    .ip-item {
+      cursor: grab; padding: 8px 16px; background: #e9ecef; border: 2px solid #adb5bd;
+      border-radius: 6px; font-family: monospace; font-size: 1.1rem; font-weight: bold;
+      user-select: none; transition: all 0.2s;
+    }
+    .ip-item:active { cursor: grabbing; }
+    .ip-item:hover { background: #dee2e6; border-color: #6c757d; }
+    .ip-item.dragging { opacity: 0.5; }
+    .ip-item.correct { background: #d1e7dd; border-color: #198754; color: #0f5132; cursor: default; animation: pop 0.3s ease; }
+    .ip-item.wrong { background: #f8d7da; border-color: #dc3545; animation: shake 0.4s ease; }
+    .zona-drop {
+      min-height: 120px; border: 2px dashed #6c757d; border-radius: 8px;
+      padding: 10px; background: #f8f9fa; transition: all 0.2s;
+    }
+    .zona-drop.drag-over { background: #cfe2ff; border-color: #0d6efd; border-style: solid; }
+    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+    .font-monospace { font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important; }
+    .table-sm td, .table-sm th { padding: 0.3rem; }
+  </style>
+</head>
+<body>
+
+  <div class="container" style="max-width: 1100px;">
+    
+    <ul class="nav nav-tabs mb-3" id="myTab" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="tab1-tab" data-bs-toggle="tab" data-bs-target="#tab1" type="button" role="tab"><i class="fa fa-network-wired me-1"></i> Clasificador</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab2-tab" data-bs-toggle="tab" data-bs-target="#tab2" type="button" role="tab"><i class="fa fa-calculator me-1"></i> Calculadora Inversa</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab3-tab" data-bs-toggle="tab" data-bs-target="#tab3" type="button" role="tab"><i class="fa fa-exchange-alt me-1"></i> ¿Es Alcanzable?</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab4-tab" data-bs-toggle="tab" data-bs-target="#tab4" type="button" role="tab"><i class="fa fa-sitemap me-1"></i> Subnetting</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tab5-tab" data-bs-toggle="tab" data-bs-target="#tab5" type="button" role="tab"><i class="fa fa-tags me-1"></i> Clases y Especiales</button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="myTabContent">
+      
+      <!-- ================= MÓDULO 1: CLASIFICADOR ================= -->
+      <div class="tab-pane fade show active" id="tab1" role="tabpanel">
+        <div class="card shadow-sm border-primary">
+          <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Clasificador de Subredes</h5>
+          </div>
+          <div class="card-body bg-light">
+            
+            <div class="row g-2 mb-3 align-items-end bg-white p-3 rounded border shadow-sm mx-0">
+              <div class="col-md-3">
+                <label class="form-label fw-bold small mb-1">Red Principal</label>
+                <input type="text" class="form-control form-control-sm font-monospace" id="m1-input-red" value="192.168.10.0/24">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold small mb-1">Nº de Subredes</label>
+                <input type="number" class="form-control form-control-sm" id="m1-input-subredes" value="4" min="2" max="16">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label fw-bold small mb-1">Nº de IPs a clasificar</label>
+                <input type="number" class="form-control form-control-sm" id="m1-input-total" value="8" min="2" max="20">
+              </div>
+              <div class="col-md-3">
+                <button id="btn-reset-1" class="btn btn-primary btn-sm w-100 fw-bold">Generar Ejercicio</button>
+              </div>
+            </div>
+
+            <p class="text-muted small mb-3">Arrastrá cada IP al contenedor de su red correspondiente. <br><small><i class="fa fa-lightbulb text-warning"></i> Tip: Doble clic en una IP para ver el cálculo binario.</small></p>
+            
+            <div class="mb-4">
+              <h6 class="text-secondary border-bottom pb-1">Pool de IPs</h6>
+              <div id="m1-pool" class="d-flex flex-wrap gap-2 p-3 bg-white border rounded" style="min-height: 100px;"></div>
+            </div>
+
+            <h6 class="text-secondary border-bottom pb-1">Redes Destino</h6>
+            <div id="m1-zonas" class="row g-3"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MÓDULO 2: CALCULADORA INVERSA ================= -->
+      <div class="tab-pane fade" id="tab2" role="tabpanel">
+        <div class="card shadow-sm border-success">
+          <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Calculadora Inversa (Rango de Red)</h5>
+            <button id="btn-reset-2-random" class="btn btn-light btn-sm fw-bold"><i class="fa fa-random me-1"></i> Generar al Azar</button>
+          </div>
+          <div class="card-body bg-light">
+            
+            <div class="row justify-content-center mb-3">
+              <div class="col-md-8">
+                <label class="form-label fw-bold small mb-1">Ingresá una red (IP/Máscara):</label>
+                <div class="input-group">
+                  <input type="text" class="form-control font-monospace fs-6" id="m2-input-red" value="192.168.1.0/24">
+                  <button class="btn btn-success" id="m2-btn-cargar">Cargar Red</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-success font-monospace fs-5 text-center" id="m2-display-red" style="display:none;">
+              Red a calcular: <strong id="m2-red"></strong>
+            </div>
+
+            <div id="m2-formulario" style="display:none;">
+              <p class="text-muted small">Calculá los datos de esta red y presioná "Verificar".</p>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Dirección de Broadcast</label>
+                  <input type="text" class="form-control font-monospace" id="m2-broadcast">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Cantidad total de Hosts útiles</label>
+                  <input type="number" class="form-control font-monospace" id="m2-hosts">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Primera IP útil (Host mínimo)</label>
+                  <input type="text" class="form-control font-monospace" id="m2-min">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label fw-bold">Última IP útil (Host máximo)</label>
+                  <input type="text" class="form-control font-monospace" id="m2-max">
+                </div>
+              </div>
+              <button id="m2-check" class="btn btn-success mt-3 w-100 fw-bold">Verificar Respuestas</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MÓDULO 3: RUTEO BÁSICO ================= -->
+      <div class="tab-pane fade" id="tab3" role="tabpanel">
+        <div class="card shadow-sm border-warning">
+          <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0">¿Es Alcanzable? (Ruteo Local)</h5>
+          </div>
+          <div class="card-body bg-light text-center">
+            <p class="text-muted small">¿Pueden estos dos hosts comunicarse directamente sin un router?</p>
+            
+            <div class="row justify-content-center align-items-center mb-4">
+              <div class="col-md-4">
+                <div class="card shadow-sm border-secondary">
+                  <div class="card-body">
+                    <h6 class="text-muted">Host A</h6>
+                    <h4 class="font-monospace mb-0" id="m3-ipA"></h4>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-2 my-2">
+                <i class="fa fa-arrows-alt-h fa-2x text-muted"></i>
+              </div>
+              <div class="col-md-4">
+                <div class="card shadow-sm border-secondary">
+                  <div class="card-body">
+                    <h6 class="text-muted">Host B</h6>
+                    <h4 class="font-monospace mb-0" id="m3-ipB"></h4>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div id="m3-botones-respuesta" class="d-flex justify-content-center gap-3 mb-3">
+              <button id="m3-btn-si" class="btn btn-outline-success btn-lg w-25 fw-bold">SÍ</button>
+              <button id="m3-btn-no" class="btn btn-outline-danger btn-lg w-25 fw-bold">NO</button>
+            </div>
+            
+            <div id="m3-feedback" class="text-start bg-white p-3 border rounded d-none">
+              <div id="m3-feedback-texto" class="font-monospace mb-3"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MÓDULO 4: SUBNETTING DIRIGIDO ================= -->
+      <div class="tab-pane fade" id="tab4" role="tabpanel">
+        <div class="card shadow-sm border-info">
+          <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Diseño de Subredes</h5>
+            <button id="btn-reset-4" class="btn btn-light btn-sm fw-bold"><i class="fa fa-refresh me-1"></i> Siguiente Caso</button>
+          </div>
+          <div class="card-body bg-light">
+            <div class="alert alert-info font-monospace fs-6 text-center" id="m4-enunciado"></div>
+            
+            <div class="row justify-content-center">
+              <div class="col-md-8">
+                <label class="form-label fw-bold" id="m4-label-input">Máscara de subred</label>
+                <div class="input-group mb-3">
+                  <input type="text" class="form-control font-monospace fs-5" id="m4-mask-input">
+                  <button class="btn btn-info text-white fw-bold" id="m4-check">Verificar</button>
+                </div>
+              </div>
+            </div>
+            <div id="m4-feedback" class="mt-3 text-center d-none"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= MÓDULO 5: CLASES Y ESPECIALES ================= -->
+      <div class="tab-pane fade" id="tab5" role="tabpanel">
+        <div class="card shadow-sm border-dark">
+          <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Clases de IP y Direcciones Especiales</h5>
+            <div>
+              <button class="btn btn-outline-light btn-sm fw-bold me-2" data-bs-toggle="modal" data-bs-target="#modalAyudaIPs"><i class="fa fa-question-circle me-1"></i> Ayuda</button>
+              <button id="btn-reset-5" class="btn btn-light btn-sm fw-bold"><i class="fa fa-arrow-right me-1"></i> Siguiente IP</button>
+            </div>
+          </div>
+          <div class="card-body bg-light text-center">
+            <h2 class="font-monospace my-4" id="m5-ip"></h2>
+            
+            <div class="row justify-content-center">
+              <div class="col-md-8">
+                <p class="mb-1 fw-bold">¿Qué tipo de dirección es?</p>
+                <div class="btn-group flex-wrap mb-4" role="group" id="m5-opciones">
+                  <button class="btn btn-outline-dark" data-val="Privada">Privada</button>
+                  <button class="btn btn-outline-dark" data-val="Pública">Pública</button>
+                  <button class="btn btn-outline-dark" data-val="Loopback">Loopback</button>
+                  <button class="btn btn-outline-dark" data-val="APIPA">APIPA</button>
+                  <button class="btn btn-outline-dark" data-val="Multicast">Multicast</button>
+                </div>
+              </div>
+            </div>
+            <div id="m5-feedback" class="fs-5 fw-bold d-none"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Modales -->
+  <div class="modal fade" id="modalAyuda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title">Ayuda: Cálculo AND en Binario</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body font-monospace" id="modal-ayuda-body" style="font-size: 0.9rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalAyudaIPs" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title">Ayuda: Tipos de Direcciones IP</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="list-group list-group-flush font-monospace small">
+            <li class="list-group-item"><strong>Privadas:</strong> Rangos reservados para redes locales: <code>10.0.0.0</code> - <code>10.255.255.255</code>; <code>172.16.0.0</code> - <code>172.31.255.255</code>; <code>192.168.0.0</code> - <code>192.168.255.255</code>.</li>
+            <li class="list-group-item"><strong>Públicas:</strong> Cualquier IP que no esté en los rangos privados ni especiales. Son ruteables en Internet.</li>
+            <li class="list-group-item"><strong>Loopback:</strong> Rango <code>127.0.0.0</code> a <code>127.255.255.255</code>. Se usa para pruebas locales (localhost).</li>
+            <li class="list-group-item"><strong>APIPA (Automatic Private IP Addressing):</strong> Rango <code>169.254.0.0</code> a <code>169.254.255.255</code>. Windows las asigna cuando no encuentra un servidor DHCP (problema de conexión).</li>
+            <li class="list-group-item"><strong>Multicast:</strong> Rango <code>224.0.0.0</code> a <code>239.255.255.255</code>. Se usan para enviar un solo paquete a un grupo de dispositivos (streaming, protocolos de ruteo).</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+  (function() {
+    'use strict';
+
+    // ==========================================
+    // UTILS GLOBALES IP
+    // ==========================================
+    const ipToInt = (ip) => ip.split('.').reduce((acc, oct) => (acc << 8) + parseInt(oct, 10), 0) >>> 0;
+    const intToIp = (int) => [24, 16, 8, 0].map(shift => (int >>> shift) & 255).join('.');
+    const intToBin = (int) => int.toString(2).padStart(32, '0').match(/.{1,8}/g).join('.');
+    const getMaskInt = (mask) => mask === 0 ? 0 : (0xFFFFFFFF << (32 - mask)) >>> 0;
+    
+    const maskToCidr = (maskStr) => {
+      if (maskStr.startsWith('/')) return parseInt(maskStr.substring(1));
+      const ipInt = ipToInt(maskStr);
+      let cidr = 0;
+      for (let i = 31; i >= 0; i--) {
+        if ((ipInt & (1 << i)) !== 0) cidr++;
+        else break;
+      }
+      return cidr;
+    };
+
+    const elegirAleatorioDistinto = (lista, elementoActual) => {
+      if (lista.length <= 1) return lista[0];
+      let nuevo;
+      do {
+        nuevo = lista[Math.floor(Math.random() * lista.length)];
+      } while (JSON.stringify(nuevo) === JSON.stringify(elementoActual));
+      return nuevo;
+    };
+
+    const mostrarToast = (mensaje, tipo, duracion = 2000) => {
+      let container = document.getElementById('toast-container');
+      if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        container.style.zIndex = '9999';
+        document.body.appendChild(container);
+      }
+      const toastEl = document.createElement('div');
+      toastEl.className = `toast align-items-center text-white bg-${tipo} border-0 show`;
+      toastEl.innerHTML = `
+        <div class="d-flex">
+          <div class="toast-body fw-bold">
+            ${tipo === 'success' ? '<i class="fa fa-check-circle me-1"></i>' : '<i class="fa fa-times-circle me-1"></i>'}
+            ${mensaje}
+          </div>
+          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>`;
+      container.appendChild(toastEl);
+      setTimeout(() => { if(toastEl.parentNode) toastEl.remove(); }, duracion);
+    };
+
+    // ==========================================
+    // MÓDULO 1: CLASIFICADOR
+    // ==========================================
+    let m1_ips = [];
+    let m1_baldes = [];
+
+    function m1_init() {
+      const inputRed = document.getElementById('m1-input-red').value.trim();
+      const cantSubredes = parseInt(document.getElementById('m1-input-subredes').value);
+      const cantTotal = parseInt(document.getElementById('m1-input-total').value);
+
+      if(!inputRed.includes('/') || isNaN(cantSubredes) || cantSubredes < 2 || cantSubredes > 16) {
+        mostrarToast('Revisá la red o el número de subredes (2 a 16).', 'danger');
+        return;
+      }
+      if(isNaN(cantTotal) || cantTotal < 2 || cantTotal > 30) {
+        mostrarToast('La cantidad de IPs debe ser entre 2 y 30.', 'danger');
+        return;
+      }
+
+      const [ipBase, maskBaseStr] = inputRed.split('/');
+      const maskBase = parseInt(maskBaseStr);
+      const bitsNuevos = Math.log2(cantSubredes);
+      
+      if(!Number.isInteger(bitsNuevos)) {
+        mostrarToast('La cantidad de subredes debe ser potencia de 2 (2, 4, 8, 16).', 'danger');
+        return;
+      }
+
+      const newMask = maskBase + bitsNuevos;
+      if(newMask > 30) {
+        mostrarToast('La máscara resultante es muy grande (máx /30).', 'danger');
+        return;
+      }
+
+      m1_ips = []; m1_baldes = [];
+      const pool = document.getElementById('m1-pool');
+      const zonas = document.getElementById('m1-zonas');
+      pool.innerHTML = ''; zonas.innerHTML = '';
+
+      const baseInt = ipToInt(ipBase) & getMaskInt(maskBase);
+      const tamañoSubred = Math.pow(2, 32 - newMask);
+
+      for (let i = 0; i < cantSubredes; i++) {
+        const netInt = baseInt + (i * tamañoSubred);
+        m1_baldes.push({ id: 'm1-b' + i, redStr: `${intToIp(netInt)}/${newMask}` });
+      }
+
+      for (let i = 0; i < cantTotal; i++) {
+        const bIdx = Math.floor(Math.random() * cantSubredes);
+        const netInt = baseInt + (bIdx * tamañoSubred);
+        const ipInt = netInt + Math.floor(Math.random() * (tamañoSubred - 2)) + 1;
+        m1_ips.push({
+          id: 'm1-ip' + i,
+          ipStr: intToIp(ipInt),
+          mascara: newMask,
+          redCorrecta: `${intToIp(netInt)}/${newMask}`
+        });
+      }
+      m1_ips.sort(() => Math.random() - 0.5);
+
+      m1_ips.forEach(ip => {
+        const el = document.createElement('div');
+        el.className = 'ip-item'; el.draggable = true; el.id = ip.id;
+        el.innerHTML = `${ip.ipStr} <span class="text-muted" style="font-size:0.8rem">/${ip.mascara}</span>`;
+        el.addEventListener('dragstart', m1_dragStart);
+        el.addEventListener('dragend', m1_dragEnd);
+        el.addEventListener('dblclick', () => m1_mostrarAyuda(ip));
+        pool.appendChild(el);
+      });
+
+      m1_baldes.forEach(b => {
+        const col = document.createElement('div');
+        col.className = 'col-md-3';
+        col.innerHTML = `
+          <div class="card shadow-sm h-100">
+            <div class="card-header bg-secondary text-white text-center py-1 font-monospace fw-bold">Red: ${b.redStr}</div>
+            <div class="card-body p-2 zona-drop d-flex flex-wrap gap-2 align-content-start" data-red="${b.redStr}" id="${b.id}"></div>
+          </div>`;
+        const dz = col.querySelector('.zona-drop');
+        dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+        dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+        dz.addEventListener('drop', m1_drop);
+        zonas.appendChild(col);
+      });
+    }
+
+    let m1_dragged = null;
+    function m1_dragStart(e) {
+      if (this.classList.contains('correct')) { e.preventDefault(); return; }
+      m1_dragged = this; this.classList.add('dragging');
+    }
+    function m1_dragEnd() {
+      this.classList.remove('dragging'); m1_dragged = null;
+      document.querySelectorAll('#tab1 .zona-drop').forEach(z => z.classList.remove('drag-over'));
+    }
+    function m1_drop(e) {
+      e.preventDefault(); this.classList.remove('drag-over');
+      if (!m1_dragged) return;
+      const redDestino = this.getAttribute('data-red');
+      const ipOrigen = m1_ips.find(x => x.id === m1_dragged.id);
+      
+      if (ipOrigen.redCorrecta === redDestino) {
+        this.appendChild(m1_dragged);
+        m1_dragged.classList.add('correct');
+        m1_dragged.draggable = false;
+        mostrarToast('¡Correcto!', 'success');
+        if (document.querySelectorAll('#tab1 .ip-item.correct').length === m1_ips.length) {
+          setTimeout(() => mostrarToast('¡Excelente! Clasificaste todo.', 'success', 4000), 300);
+        }
+      } else {
+        m1_dragged.classList.add('wrong');
+        mostrarToast('Incorrecto. No pertenece a esta red.', 'danger');
+        setTimeout(() => m1_dragged && m1_dragged.classList.remove('wrong'), 500);
+      }
+    }
+
+    function m1_mostrarAyuda(ipData) {
+      const ipInt = ipToInt(ipData.ipStr);
+      const maskInt = getMaskInt(ipData.mascara);
+      const netInt = (ipInt & maskInt) >>> 0;
+      document.getElementById('modal-ayuda-body').innerHTML = `
+        <p>AND bit a bit entre la IP y la Máscara:</p>
+        <table class="table table-bordered table-sm text-center font-monospace">
+          <tr><td class="text-start">IP</td><td>${ipData.ipStr}</td><td>${intToBin(ipInt)}</td></tr>
+          <tr><td class="text-start">Máscara (/${ipData.mascara})</td><td>${intToIp(maskInt)}</td><td>${intToBin(maskInt)}</td></tr>
+          <tr class="table-success fw-bold"><td class="text-start">Red</td><td>${intToIp(netInt)}</td><td>${intToBin(netInt)}</td></tr>
+        </table>`;
+      new bootstrap.Modal(document.getElementById('modalAyuda')).show();
+    }
+
+    // ==========================================
+    // MÓDULO 2: CALCULADORA INVERSA
+    // ==========================================
+    let m2_current = {};
+
+    function m2_load(cidrStr) {
+      if(!cidrStr.includes('/')) {
+        mostrarToast('Formato inválido. Usá IP/Máscara (ej: 192.168.1.0/24).', 'danger');
+        return;
+      }
+      const [ip, maskStr] = cidrStr.split('/');
+      const mask = parseInt(maskStr);
+      if(isNaN(mask) || mask < 8 || mask > 30) {
+        mostrarToast('La máscara debe estar entre /8 y /30.', 'danger');
+        return;
+      }
+
+      const ipInt = ipToInt(ip);
+      const netInt = (ipInt & getMaskInt(mask)) >>> 0;
+      const blockSize = Math.pow(2, 32 - mask);
+      
+      m2_current = {
+        redStr: `${intToIp(netInt)}/${mask}`,
+        broadcast: intToIp(netInt + blockSize - 1),
+        min: intToIp(netInt + 1),
+        max: intToIp(netInt + blockSize - 2),
+        hosts: blockSize - 2
+      };
+
+      document.getElementById('m2-red').textContent = m2_current.redStr;
+      document.getElementById('m2-display-red').style.display = 'block';
+      document.getElementById('m2-formulario').style.display = 'block';
+      
+      ['broadcast','hosts','min','max'].forEach(id => {
+        const el = document.getElementById('m2-' + id);
+        el.value = '';
+        el.classList.remove('is-valid', 'is-invalid');
+      });
+    }
+
+    function m2_check() {
+      const valB = document.getElementById('m2-broadcast').value.trim();
+      const valH = document.getElementById('m2-hosts').value.trim();
+      const valMin = document.getElementById('m2-min').value.trim();
+      const valMax = document.getElementById('m2-max').value.trim();
+
+      const check = (elId, cond) => {
+        const el = document.getElementById(elId);
+        el.classList.remove('is-valid', 'is-invalid');
+        el.classList.add(cond ? 'is-valid' : 'is-invalid');
+        return cond;
+      };
+
+      const okB = check('m2-broadcast', valB === m2_current.broadcast);
+      const okH = check('m2-hosts', parseInt(valH) === m2_current.hosts);
+      const okMin = check('m2-min', valMin === m2_current.min);
+      const okMax = check('m2-max', valMax === m2_current.max);
+
+      if (okB && okH && okMin && okMax) {
+        mostrarToast('¡Todo perfecto! Siguiente...', 'success');
+        setTimeout(m2_random, 1500);
+      } else {
+        mostrarToast('Hay errores en rojo. Revisá las cuentas.', 'danger');
+      }
+    }
+
+    function m2_random() {
+      const masks = [24, 25, 26, 27, 28, 29];
+      let cidrStr;
+      do {
+        const mask = masks[Math.floor(Math.random() * masks.length)];
+        const ipInt = ipToInt(`192.168.${Math.floor(Math.random()*10)}.0`);
+        const netInt = (ipInt & getMaskInt(mask)) >>> 0;
+        cidrStr = `${intToIp(netInt)}/${mask}`;
+      } while (cidrStr === m2_current.redStr);
+      
+      document.getElementById('m2-input-red').value = cidrStr;
+      m2_load(cidrStr);
+    }
+
+    // ==========================================
+    // MÓDULO 3: RUTEO BÁSICO
+    // ==========================================
+    let m3_current = {};
+
+    function m3_init() {
+      // 50/50 estricto
+      const esAlcanzable = Math.random() > 0.5;
+      const mask = [24, 25, 26][Math.floor(Math.random()*3)];
+      
+      // Elegimos una red base aleatoria para el Host A (ej: 192.168.X.0)
+      const baseRedA = Math.floor(Math.random() * 50); // 0 a 49
+      const netBaseAInt = ipToInt(`192.168.${baseRedA}.0`);
+      
+      // Host A siempre está en esa red
+      const ipAInt = netBaseAInt + Math.floor(Math.random() * 200) + 1; 
+      
+      let ipBInt;
+      let redBaseB = baseRedA;
+
+      if (esAlcanzable) {
+        // Si es alcanzable, Host B está en la MISMA red (redBaseA)
+        ipBInt = netBaseAInt + Math.floor(Math.random() * 200) + 1;
+      } else {
+        // Si no es alcanzable, Host B va a una red DIFERENTE (ej: 192.168.Y.0, donde Y != X)
+        do {
+          redBaseB = Math.floor(Math.random() * 50);
+        } while (redBaseB === baseRedA);
+        
+        const netBaseBInt = ipToInt(`192.168.${redBaseB}.0`);
+        ipBInt = netBaseBInt + Math.floor(Math.random() * 200) + 1;
+      }
+
+      m3_current = {
+        ipA: `${intToIp(ipAInt)}/${mask}`,
+        ipB: `${intToIp(ipBInt)}/${mask}`,
+        redA: (ipAInt & getMaskInt(mask)) >>> 0,
+        redB: (ipBInt & getMaskInt(mask)) >>> 0,
+        mask: mask
+      };
+
+      document.getElementById('m3-ipA').textContent = m3_current.ipA;
+      document.getElementById('m3-ipB').textContent = m3_current.ipB;
+      
+      document.getElementById('m3-feedback').classList.add('d-none');
+      document.getElementById('m3-botones-respuesta').style.display = 'flex';
+      
+      document.getElementById('m3-btn-si').disabled = false;
+      document.getElementById('m3-btn-no').disabled = false;
+    }
+
+    function m3_responder(dijoSi) {
+      const esMismaRed = m3_current.redA === m3_current.redB;
+      const correcto = (dijoSi === esMismaRed);
+
+      document.getElementById('m3-btn-si').disabled = true;
+      document.getElementById('m3-btn-no').disabled = true;
+
+      if (correcto) {
+        mostrarToast('¡Muy bien! Pasando al siguiente...', 'success');
+        setTimeout(m3_init, 1000);
+      } else {
+        mostrarToast('Incorrecto. Revisá la explicación.', 'danger');
+        document.getElementById('m3-botones-respuesta').style.display = 'none';
+        
+        const fb = document.getElementById('m3-feedback');
+        fb.classList.remove('d-none');
+        
+        document.getElementById('m3-feedback-texto').innerHTML = `
+          <p class="mb-1"><strong>Red del Host A:</strong> ${intToIp(m3_current.redA)}/${m3_current.mask}</p>
+          <p class="mb-1"><strong>Red del Host B:</strong> ${intToIp(m3_current.redB)}/${m3_current.mask}</p>
+          <p class="mb-2"><strong>Conclusión:</strong> ${esMismaRed ? 'Comparten el ID de red. Se comunican directo sin router.' : 'No comparten el ID de red. Requieren un router para comunicarse.'}</p>
+          <div class="alert alert-danger mb-0 py-1">❌ Tu respuesta fue incorrecta.</div>
+          <button class="btn btn-warning w-100 fw-bold mt-3" onclick="window.m3_init()">Siguiente Caso <i class="fa fa-arrow-right ms-1"></i></button>
+        `;
+      }
+    }
+
+    // ==========================================
+    // MÓDULO 4: SUBNETTING DIRIGIDO
+    // ==========================================
+    let m4_current = {};
+
+    function m4_init() {
+      const isHosts = Math.random() > 0.5;
+      const mascaraDecimal = Math.random() > 0.5;
+      
+      const maskList = [22, 24, 25, 26, 27, 28];
+      const mask = elegirAleatorioDistinto(maskList, m4_current.mask);
+      
+      let baseCidr = 24;
+      if (mask < 24) baseCidr = 16;
+      if (mask < 16) baseCidr = 8;
+      
+      const baseIpList = [
+        `10.0.0.0/${baseCidr}`, 
+        `172.16.0.0/${baseCidr}`, 
+        `192.168.0.0/${baseCidr}`,
+        `192.168.100.0/${baseCidr}`
+      ];
+      const baseIp = elegirAleatorioDistinto(baseIpList, m4_current.baseIp);
+      
+      const reqHosts = Math.pow(2, 32 - mask) - 2;
+      const reqRedes = Math.pow(2, mask - baseCidr); 
+
+      m4_current = { mask: mask, mascaraDecimal: mascaraDecimal, isHosts: isHosts, baseIp: baseIp, baseCidr: baseCidr };
+
+      let enunciado = '';
+      let labelInput = '';
+      
+      if (isHosts) {
+        enunciado = `Tenés el bloque <strong>${baseIp}</strong>.<br>
+          Necesitás crear subredes que soporten al menos <strong>${reqHosts} hosts útiles</strong> cada una.<br>`;
+      } else {
+        enunciado = `Tenés el bloque <strong>${baseIp}</strong>.<br>
+          Necesitás subdividirlo en al menos <strong>${reqRedes} subredes</strong>.<br>`;
+      }
+      
+      if (mascaraDecimal) {
+        enunciado += `¿Qué máscara usarías?`;
+        labelInput = 'Máscara de subred (Formato decimal, ej: 255.255.255.0)';
+        document.getElementById('m4-mask-input').placeholder = '255.255.255.0';
+      } else {
+        enunciado += `¿Qué máscara usarías?`;
+        labelInput = 'Máscara de subred (Formato CIDR, ej: /24)';
+        document.getElementById('m4-mask-input').placeholder = '/24';
+      }
+
+      document.getElementById('m4-enunciado').innerHTML = enunciado;
+      document.getElementById('m4-label-input').textContent = labelInput;
+      document.getElementById('m4-mask-input').value = '';
+      document.getElementById('m4-feedback').classList.add('d-none');
+      document.getElementById('m4-mask-input').classList.remove('is-valid', 'is-invalid');
+    }
+
+    function m4_check() {
+      const rawVal = document.getElementById('m4-mask-input').value.trim();
+      const fb = document.getElementById('m4-feedback');
+      const input = document.getElementById('m4-mask-input');
+      
+      let valMask = null;
+      let formatoValido = true;
+
+      if (m4_current.mascaraDecimal) {
+        if (rawVal.startsWith('/')) formatoValido = false;
+      } else {
+        if (!rawVal.startsWith('/')) formatoValido = false;
+      }
+
+      if (formatoValido) {
+        try { valMask = maskToCidr(rawVal); } catch(e) {}
+      }
+
+      input.classList.remove('is-valid', 'is-invalid');
+      fb.classList.remove('d-none');
+
+      if (!formatoValido || valMask === null || isNaN(valMask)) {
+        input.classList.add('is-invalid');
+        fb.innerHTML = `<div class="alert alert-warning py-2 mb-0">⚠️ Formato incorrecto. Por favor, usá el formato que se pide en el enunciado.</div>`;
+        mostrarToast('Formato inválido.', 'danger');
+        return;
+      }
+
+      if (valMask === m4_current.mask) {
+        input.classList.add('is-valid');
+        fb.innerHTML = '<div class="alert alert-success py-2 mb-0">✅ ¡Correcto! Esa máscara cumple con el requisito.</div>';
+        mostrarToast('¡Correcto! Siguiente...', 'success');
+        setTimeout(m4_init, 1500);
+      } else {
+        input.classList.add('is-invalid');
+        let msg = '';
+        if (valMask >= 8 && valMask <= 30) {
+          if (m4_current.isHosts) {
+            const h = Math.pow(2, 32 - valMask) - 2;
+            msg = `Con esa máscara obtenés ${h} hosts. `;
+          } else {
+            const r = Math.pow(2, valMask - m4_current.baseCidr);
+            msg = `Con esa máscara obtenés ${r} subredes. `;
+          }
+        }
+        fb.innerHTML = `<div class="alert alert-danger py-2 mb-0">❌ Incorrecto. ${msg}La respuesta correcta era <strong>/${m4_current.mask}</strong>.</div>`;
+        mostrarToast('Incorrecto.', 'danger');
+      }
+    }
+
+    // ==========================================
+    // MÓDULO 5: CLASES Y ESPECIALES
+    // ==========================================
+    let m5_current = {};
+
+    function m5_init() {
+      const ips = [
+        // Privadas
+        { ip: '10.0.0.5', tipo: 'Privada' },
+        { ip: '10.255.1.1', tipo: 'Privada' },
+        { ip: '172.16.4.10', tipo: 'Privada' },
+        { ip: '172.25.30.40', tipo: 'Privada' },
+        { ip: '172.31.255.1', tipo: 'Privada' },
+        { ip: '192.168.1.1', tipo: 'Privada' },
+        { ip: '192.168.100.50', tipo: 'Privada' },
+        
+        // Públicas fáciles
+        { ip: '8.8.8.8', tipo: 'Pública' },
+        { ip: '20.30.12.0', tipo: 'Pública' },
+        { ip: '43.0.12.4', tipo: 'Pública' },
+        { ip: '200.10.20.30', tipo: 'Pública' },
+        
+        // Públicas "tramposas"
+        { ip: '172.10.1.20', tipo: 'Pública' },
+        { ip: '172.32.4.10', tipo: 'Pública' }, 
+        { ip: '193.0.12.30', tipo: 'Pública' },
+        
+        // Especiales
+        { ip: '127.0.0.1', tipo: 'Loopback' },
+        { ip: '127.50.60.70', tipo: 'Loopback' },
+        { ip: '169.254.10.5', tipo: 'APIPA' },
+        { ip: '169.254.200.100', tipo: 'APIPA' },
+        { ip: '224.0.0.1', tipo: 'Multicast' },
+        { ip: '239.1.2.3', tipo: 'Multicast' }
+      ];
+      
+      m5_current = elegirAleatorioDistinto(ips, m5_current);
+      
+      document.getElementById('m5-ip').textContent = m5_current.ip;
+      document.getElementById('m5-feedback').classList.add('d-none');
+      
+      document.querySelectorAll('#m5-opciones button').forEach(b => {
+        b.className = 'btn btn-outline-dark';
+        b.disabled = false;
+        b.innerHTML = b.getAttribute('data-val'); 
+      });
+    }
+
+    function m5_responder(btn, elegido) {
+      const correcto = elegido === m5_current.tipo;
+      const fb = document.getElementById('m5-feedback');
+      
+      document.querySelectorAll('#m5-opciones button').forEach(b => b.disabled = true);
+      
+      btn.className = correcto ? 'btn btn-success' : 'btn btn-danger';
+      btn.innerHTML += correcto ? ' <i class="fa fa-check"></i>' : ' <i class="fa fa-times"></i>';
+
+      if (!correcto) {
+        document.querySelectorAll('#m5-opciones button').forEach(b => {
+          if (b.getAttribute('data-val') === m5_current.tipo) {
+            b.className = 'btn btn-success';
+            b.innerHTML += ' <i class="fa fa-check"></i>';
+          }
+        });
+      }
+
+      fb.classList.remove('d-none');
+      fb.className = `fs-5 fw-bold mt-3 ${correcto ? 'text-success' : 'text-danger'}`;
+      fb.textContent = correcto ? '¡Correcto! Siguiente...' : `Incorrecto. Era: ${m5_current.tipo}`;
+      
+      if (correcto) {
+        setTimeout(m5_init, 1500); 
+      }
+    }
+
+    // ==========================================
+    // ASIGNACIÓN DE EVENTOS Y ARRANQUE
+    // ==========================================
+    document.addEventListener('DOMContentLoaded', () => {
+      // Módulo 1
+      document.getElementById('btn-reset-1').addEventListener('click', m1_init);
+      // Módulo 2
+      document.getElementById('btn-reset-2-random').addEventListener('click', m2_random);
+      document.getElementById('m2-btn-cargar').addEventListener('click', () => m2_load(document.getElementById('m2-input-red').value.trim()));
+      document.getElementById('m2-check').addEventListener('click', m2_check);
+      // Módulo 3
+      document.getElementById('m3-btn-si').addEventListener('click', () => m3_responder(true));
+      document.getElementById('m3-btn-no').addEventListener('click', () => m3_responder(false));
+      // Módulo 4
+      document.getElementById('btn-reset-4').addEventListener('click', m4_init);
+      document.getElementById('m4-check').addEventListener('click', m4_check);
+      
+      // FIX: Escuchar Enter en el input de Subnetting
+      document.getElementById('m4-mask-input').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault(); // Evita que recargue la página o haga submit
+          m4_check();
+        }
+      });
+
+      // Módulo 5
+      document.getElementById('btn-reset-5').addEventListener('click', m5_init);
+      document.querySelectorAll('#m5-opciones button').forEach(b => {
+        b.addEventListener('click', function() { m5_responder(this, this.getAttribute('data-val')); });
+      });
+
+      // Inicializar todos
+      m1_init();
+      m2_random();
+      m3_init();
+      m4_init();
+      m5_init();
+    });
+
+    // Exponer m3_init globalmente para el botón inline de error
+    window.m3_init = m3_init;
+
+  })();
+  </script>
+</body>
+</html>
