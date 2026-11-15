@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Simulador de protocolos complementarios a IP: ARP, RARP, DHCP e ICMP</title>
+<title>Simulador de protocolos complementarios a IP: ARP, RARP, BOOTP, DHCP e ICMP</title>
 <style>
   :root {
     --bg:#fafafb; --surface:#fff; --text:#1f2430; --muted:#868d9c; --line:#ebedf2; --line-2:#dfe2ea;
@@ -147,6 +147,34 @@
   #view-sum .card { margin-bottom:16px; }
   #view-sum details { border:1px solid var(--line); border-radius:10px; padding:9px 14px; margin-top:8px; }
   #view-sum details summary { cursor:pointer; font-weight:600; }
+  /* examen */
+  .tchk { display:inline-flex; align-items:center; gap:7px; cursor:pointer; padding:5px 12px; font-size:13px; }
+  .tchk:has(input:checked) { background:var(--accent-soft); border-color:#c9d3fb; color:var(--accent); }
+  label.radio { display:flex; gap:10px; align-items:flex-start; padding:7px 0; color:var(--text); font-size:14px; font-weight:400; }
+  label.radio input { margin-top:5px; accent-color:var(--accent); }
+  .xhead { display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap; }
+  .prog { height:4px; border-radius:4px; background:var(--line); overflow:hidden; margin:10px 0 6px; flex:1; }
+  .prog i { display:block; height:100%; background:var(--accent); transition:width .25s; }
+  .xq { font-size:17px; line-height:1.55; margin:18px 0 16px; max-width:72ch; }
+  .xopts { display:grid; gap:8px; }
+  .xopt { display:flex; gap:12px; align-items:flex-start; text-align:left; border:1px solid var(--line-2); background:#fff; border-radius:11px; padding:11px 14px; font-size:14.5px; transition:.12s; }
+  .xopt:hover:not(:disabled) { background:#f6f7fb; }
+  .xopt .xl { flex:none; width:22px; height:22px; border-radius:50%; border:1px solid var(--line-2); display:grid; place-items:center; font-size:11.5px; font-weight:650; color:var(--muted); }
+  .xopt.sel { border-color:var(--accent); background:var(--accent-soft); } .xopt.sel .xl { background:var(--accent); border-color:var(--accent); color:#fff; }
+  .xopt.right { border-color:var(--ok); background:#f1faf7; } .xopt.right .xl { background:var(--ok); border-color:var(--ok); color:#fff; }
+  .xopt.wrong { border-color:var(--danger); background:#fdf3f2; } .xopt.wrong .xl { background:var(--danger); border-color:var(--danger); color:#fff; }
+  .xopt:disabled { cursor:default; }
+  .fb { margin-top:14px; padding:12px 15px; border-radius:11px; font-size:14px; }
+  .fb.ok { background:#f1faf7; color:#14614f; } .fb.bad { background:#fdf3f2; color:#8f2a20; }
+  .xnav { display:flex; justify-content:space-between; gap:10px; margin-top:20px; }
+  .big { font-size:56px; font-weight:650; letter-spacing:-.04em; line-height:1.1; margin:8px 0 4px; }
+  .big small { font-size:18px; color:var(--muted); font-weight:500; margin-left:6px; letter-spacing:0; }
+  .trow { display:grid; grid-template-columns:200px 1fr 44px; gap:12px; align-items:center; font-size:13.5px; }
+  .trow .prog { margin:6px 0; }
+  @media (max-width:600px) { .trow { grid-template-columns:110px 1fr 40px; } }
+  details.rev { border:1px solid var(--line); border-radius:10px; padding:9px 14px; margin-top:8px; }
+  details.rev > summary { cursor:pointer; display:flex; gap:10px; font-weight:550; font-size:14px; }
+  details.rev .mk { font-weight:700; } details.rev.ok .mk { color:var(--ok); } details.rev.bad .mk { color:var(--danger); }
   @media (prefers-reduced-motion:reduce) { * { transition:none !important; } }
 </style>
 </head>
@@ -154,7 +182,7 @@
 <header class="top">
   <div class="wrap">
     <h1>Protocolos complementarios a IP</h1>
-    <p>ARP, RARP, DHCP e ICMP: cómo un paquete encuentra su camino, trama a trama.</p>
+    <p>ARP, RARP, BOOTP, DHCP e ICMP: cómo un paquete encuentra su camino, trama a trama.</p>
   </div>
 </header>
 <main class="container">
@@ -201,6 +229,7 @@
   </section>
 
   <section id="view-sum" hidden></section>
+  <section id="view-exam" hidden></section>
 </main>
 <script>
 'use strict';
@@ -534,7 +563,7 @@ SC.rarp = {
     push(sim, { type:'tx', kind:'rarp', tok:'RARP !', lan:'L1', from:{ id:'S', i:0 }, to:[{ id:cfg.client, i:0, ok:true, note:'conoce su IP' }], dstMac:cf.mac, title:`RARP Reply: «tu IP es ${own}»`,
       html:`<p>El servidor contesta por <b>unicast</b> a la MAC del cliente (operación 4). En el campo «IP objetivo» va la dirección asignada. Ahora <b>${cfg.client}</b> ya tiene IP.</p>`,
       layers:[eth(cf.mac, sf.mac, ETYPE.rarp), arpL({ name:'Mensaje RARP', oper:'4 (respuesta RARP)', sha:sf.mac, spa:sf.ip, tha:cf.mac, tpa:own })], mcq:mkMcq(W, cf.mac, null, sim.steps.length) });
-    think(sim, cfg.client, 'Limitaciones de RARP', `<p><b>${cfg.client}</b> conoce su IP, pero RARP <b>no entrega máscara, gateway ni DNS</b>: sin gateway no podrá hablar con otras redes. Además necesita un servidor por red y una tabla manual. DHCP resuelve todo esto (pestaña siguiente).</p>`, 'rarp');
+    think(sim, cfg.client, 'Limitaciones de RARP', `<p><b>${cfg.client}</b> conoce su IP, pero RARP <b>no entrega máscara, gateway ni DNS</b>: sin gateway no podrá hablar con otras redes. Además necesita un servidor por red y una tabla manual. BOOTP y DHCP resuelven esto (pestañas siguientes).</p>`, 'rarp');
   },
   theory:`<p><b>Idea.</b> RARP (<i>Reverse ARP</i>) hace lo opuesto a ARP: parte de una MAC conocida y pide una IP. Pensado para estaciones sin disco que arrancaban por red (Tanenbaum lo presenta como antecedente de BOOTP y DHCP).</p>
   <ul><li>Usa el mismo formato de mensaje que ARP, con operaciones 3 (solicitud) y 4 (respuesta), y EtherType propio <code>0x8035</code>.</li>
@@ -544,9 +573,75 @@ SC.rarp = {
   <p>Hoy está obsoleto: lo reemplazó BOOTP (UDP/IP, con agentes de retransmisión) y finalmente DHCP.</p>`
 };
 
+/* ---------- 3b. BOOTP ---------- */
+const bootpL = o => ({ name:'Mensaje BOOTP', fields:[['op', o.op], ['xid', o.xid], ['ciaddr', o.ciaddr || '0.0.0.0'], ['yiaddr', o.yiaddr || '0.0.0.0'], ['siaddr', o.siaddr || '0.0.0.0'], ['giaddr', o.giaddr || '0.0.0.0'], ['chaddr', o.chaddr], ['file', o.file || '—'], ['vend (extensiones)', o.vend || '—']] });
+SC.bootp = {
+  label:'4. BOOTP', title:'BOOTP: arranque por red sobre UDP/IP',
+  intro:'BOOTP (RFC 951) apareció para reemplazar a RARP en el arranque de estaciones sin disco. Viaja <b>sobre UDP/IP</b> (puertos 67/68), así que un agente de retransmisión puede llevarlo a otra red, y además de la IP entrega máscara, router y el servidor y archivo de arranque. Son sólo <b>dos mensajes</b> y la asignación es <b>estática</b> (tabla MAC → IP).',
+  fields:[
+    { id:'client', label:'Cliente sin disco', type:'select', opts:hostOpts(['A', 'B']), def:'A' },
+    { id:'where', label:'Servidor BOOTP', type:'select', opts:[['local', 'En la misma LAN (S)'], ['relay', 'En otra LAN (D) vía relay en R1']], def:'local' },
+    { id:'entry', label:'', type:'checkbox', text:'La MAC del cliente está en la tabla del servidor', def:true },
+    { id:'tftp', label:'', type:'checkbox', text:'Mostrar la descarga posterior por TFTP', def:false }
+  ],
+  presets:[ { label:'Servidor en la misma LAN', cfg:{ client:'A', where:'local', entry:true, tftp:false } }, { label:'Servidor remoto con relay', cfg:{ client:'A', where:'relay', entry:true, tftp:false } }, { label:'Arranque completo con TFTP', cfg:{ client:'B', where:'local', entry:true, tftp:true } }, { label:'MAC no registrada', cfg:{ client:'A', where:'local', entry:false, tftp:false } } ],
+  noCommit:() => true,
+  gen(sim, cfg) {
+    const W = sim.W, cid = cfg.client, c = W.nodes[cid], cf = c.ifs[0], relay = cfg.where === 'relay';
+    const sid = relay ? 'D' : 'S', sf = W.nodes[sid].ifs[0], mymac = cf.mac, own = cf.ip;
+    const xid = '0x6B1D0A52', gwIp = '192.168.1.1', mask = '255.255.255.0', file = 'arranque.img';
+    const vend = `máscara ${mask} · router ${gwIp} · DNS 8.8.8.8`;
+    cf.ip = null; c.gw = null; sim.init = snapshot(W);
+    const members = () => lanMembers(W, 'L1').filter(m => m.id !== cid);
+    const tbl = `<table class="mini"><tr><th>MAC</th><th>IP asignada</th><th>Archivo</th></tr>${['A', 'B'].filter(x => cfg.entry || x !== cid).map(x => `<tr class="${x === cid ? 'chosen' : ''}"><td class="m">${BASE.nodes[x].ifs[0].mac}</td><td class="m">${BASE.nodes[x].ifs[0].ip}</td><td class="m">${file}</td></tr>`).join('')}</table>`;
+    const noEntry = who => {
+      think(sim, who, `${who} no encuentra la MAC en su tabla`, `<p>El servidor busca <code>${mymac}</code> en la tabla que armó el administrador:</p>${tbl}<p>No hay entrada: <b>no responde</b>. BOOTP no inventa direcciones; cada máquina debe estar registrada de antemano (a diferencia de DHCP).</p>`, 'icmperr');
+      think(sim, cid, 'Sin respuesta', `<p>El cliente reintenta con espera creciente y finalmente no puede arrancar.</p>`, 'icmperr');
+    };
+    think(sim, cid, `${cid} arranca sin disco ni IP`, `<p>Sólo conoce su MAC. Necesita su IP, la dirección del servidor de arranque y el nombre del archivo a descargar. Como todavía no tiene IP, usa <b>difusión limitada</b>: origen <code>0.0.0.0</code>, destino <code>255.255.255.255</code>, MAC destino <code>FF:FF:FF:FF:FF:FF</code>.</p>`, 'dhcp');
+    push(sim, { type:'tx', kind:'dhcp', tok:'BOOTP', lan:'L1', from:{ id:cid, i:0 }, dstMac:BCAST, title:'BOOTREQUEST: «mi MAC es ' + mymac + ', ¿quién soy?»',
+      html:`<p>A diferencia de RARP, el pedido ya es un <b>datagrama UDP</b> (puerto 68 → 67) dentro de IP. Sólo el campo <b>chaddr</b> identifica al cliente; <b>xid</b> relaciona pedido y respuesta.</p><p>Los demás campos (ciaddr, yiaddr, siaddr…) van en cero: son los que el servidor deberá llenar.</p>`,
+      to:members().map(m => { const isS = !relay && m.id === 'S', isR = relay && m.id === 'R1'; return { id:m.id, i:m.i, ok:isS || isR, note:isS ? 'servidor BOOTP: procesa' : isR ? 'relay agent: procesa' : (m.id === 'R1' ? 'router: no reenvía difusiones' : 'no es servidor: descarta') }; }),
+      layers:[eth(BCAST, mymac, ETYPE.ip), ipL({ src:'0.0.0.0', dst:'255.255.255.255', ttl:128, proto:17 }), udpL(68, 67), bootpL({ op:'1 (BOOTREQUEST)', xid, chaddr:mymac })], mcq:mkMcq(W, BCAST, null, sim.steps.length) });
+    if (!relay) {
+      think(sim, 'S', 'S consulta su tabla MAC → IP', `<p>El servidor BOOTP tiene una tabla estática:</p>${tbl}<p>Encuentra la entrada del cliente y prepara la respuesta con la IP asignada y el archivo de arranque.</p>`, 'dhcp');
+      if (!cfg.entry) { noEntry('S'); return; }
+      push(sim, { type:'tx', kind:'dhcp', tok:'BOOTP', lan:'L1', from:{ id:'S', i:0 }, to:[{ id:cid, i:0, ok:true, note:'procesa' }], dstMac:mymac, title:`BOOTREPLY: «tu IP es ${own}, arrancá con ${file}»`,
+        html:`<p>El servidor responde con <b>yiaddr</b> (la IP del cliente), <b>siaddr</b> (el servidor desde el que bajar la imagen) y <b>file</b> (nombre del archivo). El campo <b>vend</b> lleva extensiones: máscara, router y DNS.</p><p>Se envía a la MAC indicada en <b>chaddr</b>: sin ARP, porque el cliente aún no tiene IP.</p>`,
+        layers:[eth(mymac, sf.mac, ETYPE.ip), ipL({ src:sf.ip, dst:own, ttl:64, proto:17 }), udpL(67, 68), bootpL({ op:'2 (BOOTREPLY)', xid, yiaddr:own, siaddr:sf.ip, chaddr:mymac, file, vend })], mcq:mkMcq(W, mymac, own, sim.steps.length) });
+    } else {
+      think(sim, 'R1', 'R1 (relay) reenvía el pedido al servidor', `<p>R1 es <b>agente de retransmisión</b>: toma la difusión, completa <b>giaddr</b> con <code>${gwIp}</code> (la interfaz por la que llegó) y la reenvía por <b>unicast</b> al servidor <code>${sf.ip}</code>. Esto es lo que RARP no podía hacer.</p>`, 'dhcp');
+      const up = sendIP(sim, 'R1', { src:gwIp, dst:sf.ip, ttl:64, proto:17, kind:'dhcp', tok:'BOOTP', name:'BOOTREQUEST (reenviado por el relay)', why:'El relay genera el datagrama unicast.',
+        l4:() => [udpL(67, 67), bootpL({ op:'1 (BOOTREQUEST)', xid, giaddr:gwIp, chaddr:mymac })] });
+      if (!up.delivered) return;
+      think(sim, 'D', 'D consulta su tabla MAC → IP', `<p>El servidor usa <b>chaddr</b> para buscar al cliente y <b>giaddr</b> para saber a quién devolver la respuesta.</p>${tbl}`, 'dhcp');
+      if (!cfg.entry) { noEntry('D'); return; }
+      sendIP(sim, 'D', { src:sf.ip, dst:gwIp, ttl:64, proto:17, kind:'dhcp', tok:'BOOTP', name:'BOOTREPLY hacia el relay', why:'El servidor responde a <code>giaddr</code> (el relay), no al cliente, que aún no tiene IP.',
+        l4:() => [udpL(67, 67), bootpL({ op:'2 (BOOTREPLY)', xid, yiaddr:own, siaddr:sf.ip, giaddr:gwIp, chaddr:mymac, file, vend })] });
+      const r1f = W.nodes.R1.ifs[0];
+      push(sim, { type:'tx', kind:'dhcp', tok:'BOOTP', lan:'L1', from:{ id:'R1', i:0 }, to:[{ id:cid, i:0, ok:true, note:'procesa' }], dstMac:mymac, title:'R1 entrega el BOOTREPLY al cliente',
+        html:`<p>El relay entrega la respuesta a la MAC de <b>chaddr</b> dentro de la ${LANS.L1.name}.</p>`,
+        layers:[eth(mymac, r1f.mac, ETYPE.ip), ipL({ src:gwIp, dst:own, ttl:64, proto:17 }), udpL(67, 68), bootpL({ op:'2 (BOOTREPLY)', xid, yiaddr:own, siaddr:sf.ip, giaddr:gwIp, chaddr:mymac, file, vend })], mcq:mkMcq(W, mymac, own, sim.steps.length) });
+    }
+    cf.ip = own; cf.p = 24; c.gw = gwIp;
+    think(sim, cid, `${cid} queda configurado`, `<p>Aplica la IP <code>${own}</code>, la máscara y el router recibidos en <b>vend</b>. Terminó con <b>dos mensajes</b> (DHCP necesita cuatro). La asignación es <b>permanente</b>: no hay concesión ni renovación, y la dirección no se libera para otro equipo.</p>`, 'dhcp');
+    if (cfg.tftp) {
+      think(sim, cid, 'Descarga de la imagen de arranque', `<p>Con <b>siaddr</b> y <b>file</b> el cliente pide por <b>TFTP</b> (UDP puerto 69) el archivo <code>${file}</code>. Ahora sí tiene IP, así que primero resolverá con ARP la MAC del servidor (o la del gateway si está en otra red).</p>`, 'ip');
+      const r = sendIP(sim, cid, { src:own, dst:sf.ip, ttl:64, proto:17, kind:'ip', tok:'TFTP', name:'TFTP Read Request', l4:() => [udpL(49200, 69), { name:'Mensaje TFTP', fields:[['Operación', '1 (RRQ)'], ['Archivo', file], ['Modo', 'octet']] }] });
+      if (r.delivered) think(sim, sid, `${sid} comienza a enviar el archivo`, `<p>El servidor TFTP responde con bloques de datos de 512 bytes. Con la imagen descargada, el cliente puede arrancar su sistema operativo.</p>`, 'ip');
+    }
+  },
+  theory:`<p><b>BOOTP</b> (RFC 951; ver también RFC 1542 para su uso con relays) fue la respuesta a las limitaciones de RARP. Tanenbaum lo presenta como paso intermedio hacia DHCP.</p>
+  <ul><li><b>Sobre UDP/IP:</b> puertos 67 (servidor) y 68 (cliente). Como va en IP, un <b>agente de retransmisión</b> puede reenviarlo a otra red: no hace falta un servidor por LAN.</li>
+  <li><b>Más que una IP:</b> la respuesta incluye <b>yiaddr</b> (IP del cliente), <b>siaddr</b> (servidor de arranque), <b>file</b> (imagen a descargar, p. ej. por TFTP) y el campo <b>vend</b> con extensiones (máscara, router, DNS).</li>
+  <li><b>Dos mensajes:</b> BOOTREQUEST (difusión) y BOOTREPLY.</li>
+  <li><b>Asignación estática:</b> el administrador mantiene a mano una tabla MAC → IP. No hay concesión ni reutilización de direcciones.</li>
+  <li><b>Relación con DHCP:</b> DHCP conserva el formato de mensaje de BOOTP (por eso comparten puertos y campos) y agrega asignación dinámica con concesión, el intercambio de cuatro mensajes y opciones más ricas.</li></ul>`
+};
+
 /* ---------- 4. DHCP ---------- */
 SC.dhcp = {
-  label:'4. DHCP', title:'DHCP: configuración automática de un host',
+  label:'5. DHCP', title:'DHCP: configuración automática de un host',
   intro:'Un host recién conectado obtiene IP, máscara, gateway y DNS mediante el intercambio <b>DISCOVER → OFFER → REQUEST → ACK</b>. DHCP sí viaja sobre IP (en UDP, puertos 67/68), aunque al comienzo el cliente use <code>0.0.0.0</code>. Probá con el servidor en la misma LAN o en otra, atendido por un <b>agente de retransmisión</b> (relay) en R1.',
   fields:[
     { id:'client', label:'Cliente nuevo', type:'select', opts:hostOpts(['A', 'B']), def:'A' },
@@ -652,7 +747,7 @@ function ping(sim, srcId, dstIp, ttl, seq, quiet) {
   return r;
 }
 SC.icmp = {
-  label:'5. ICMP', title:'ICMP: ping, traceroute y mensajes de error',
+  label:'6. ICMP', title:'ICMP: ping, traceroute y mensajes de error',
   intro:'ICMP (RFC 792) permite a hosts y routers informar errores y hacer diagnóstico. Viaja <b>encapsulado en IP</b> (protocolo 1). Probá <i>ping</i>, <i>traceroute</i>, un TTL que expira, un host inexistente y una red sin ruta.',
   fields:[
     { id:'mode', label:'Herramienta', type:'select', opts:[['ping', 'ping (Echo Request / Reply)'], ['trace', 'traceroute (TTL creciente)']], def:'ping' },
@@ -688,7 +783,7 @@ SC.icmp = {
   <li><b>Redirect (5):</b> el router informa al host que existe un camino mejor. También <b>Parameter problem (12)</b>, <b>Timestamp (13/14)</b> y <b>Router advertisement/solicitation (9/10)</b>; <b>Source quench (4)</b> está en desuso.</li></ul>
   <p>Los mensajes de error incluyen la <b>cabecera IP original y los primeros 8 bytes</b> del datagrama culpable, para que el origen identifique la conexión afectada. Nunca se genera un ICMP de error en respuesta a otro ICMP de error, para evitar tormentas. Notá que cuando falla un ARP, el aviso que recibe el origen es ICMP: ARP resuelve direcciones <i>dentro</i> de una red; ICMP informa a lo largo del camino.</p>`
 };
-const TABS = ['route', 'arp', 'rarp', 'dhcp', 'icmp'];
+const TABS = ['route', 'arp', 'rarp', 'bootp', 'dhcp', 'icmp'];
 
 /* =====================================================================
    4. INTERFAZ
@@ -902,9 +997,10 @@ function renderConfig() {
 }
 function selectTab(k) {
   stopPlay(); S.tab = k;
-  $('#tabs').innerHTML = [...TABS.map(t => `<button class="tab ${k === t ? 'active' : ''}" data-tab="${t}">${SC[t].label}</button>`), `<button class="tab ${k === 'sum' ? 'active' : ''}" data-tab="sum">6. Resumen y repaso</button>`].join('');
-  $('#view-sim').hidden = k === 'sum'; $('#view-sum').hidden = k !== 'sum';
+  $('#tabs').innerHTML = [...TABS.map(t => `<button class="tab ${k === t ? 'active' : ''}" data-tab="${t}">${SC[t].label}</button>`), `<button class="tab ${k === 'sum' ? 'active' : ''}" data-tab="sum">7. Resumen y repaso</button>`, `<button class="tab ${k === 'exam' ? 'active' : ''}" data-tab="exam">8. Examen</button>`].join('');
+  $('#view-sim').hidden = k === 'sum' || k === 'exam'; $('#view-sum').hidden = k !== 'sum'; $('#view-exam').hidden = k !== 'exam';
   if (k === 'sum') { $('#view-sum').innerHTML = SUMMARY; return; }
+  if (k === 'exam') { renderExam(); return; }
   renderConfig(); runSim();
 }
 
@@ -946,6 +1042,7 @@ const SUMMARY = `
     <tr><th>Protocolo</th><th>Qué resuelve</th><th>Encapsulado en</th><th>Alcance</th><th>Mensajes</th></tr>
     <tr><td><b>ARP</b> (RFC 826)</td><td>IP → MAC</td><td>Ethernet, EtherType 0x0806</td><td>Red local (difusión)</td><td>Request (difusión) / Reply (unicast)</td></tr>
     <tr><td><b>RARP</b> (RFC 903)</td><td>MAC → IP (sólo la IP)</td><td>Ethernet, EtherType 0x8035</td><td>Red local; un servidor por LAN</td><td>Request (difusión) / Reply (unicast)</td></tr>
+    <tr><td><b>BOOTP</b> (RFC 951)</td><td>IP, máscara, router y archivo de arranque (tabla estática MAC → IP)</td><td>UDP 67 / 68 sobre IP</td><td>Local, o varias redes con relay</td><td>BOOTREQUEST (difusión) / BOOTREPLY</td></tr>
     <tr><td><b>DHCP</b> (RFC 2131)</td><td>Configuración completa: IP, máscara, gateway, DNS, lease</td><td>UDP 67 (servidor) / 68 (cliente) sobre IP</td><td>Local, o varias redes con relay</td><td>Discover, Offer, Request, Ack (Nak, Decline, Release, Inform)</td></tr>
     <tr><td><b>ICMP</b> (RFC 792)</td><td>Errores y diagnóstico de la capa IP</td><td>IP, protocolo 1</td><td>Extremo a extremo (cruza routers)</td><td>Echo, Destination unreachable, Time exceeded, Redirect…</td></tr>
   </table></div>
@@ -953,6 +1050,7 @@ const SUMMARY = `
   <div class="enc">
     <div class="encrow"><span class="lbl">ARP / RARP</span><span class="eth">Ethernet</span><span class="arp">ARP (28 bytes)</span></div>
     <div class="encrow"><span class="lbl">ICMP (ping, errores)</span><span class="eth">Ethernet</span><span class="ip">IP · proto 1</span><span class="icmp">ICMP</span></div>
+    <div class="encrow"><span class="lbl">BOOTP</span><span class="eth">Ethernet</span><span class="ip">IP · proto 17</span><span class="udp">UDP 67/68</span><span class="dhcp">BOOTP</span></div>
     <div class="encrow"><span class="lbl">DHCP</span><span class="eth">Ethernet</span><span class="ip">IP · proto 17</span><span class="udp">UDP 67/68</span><span class="dhcp">DHCP</span></div>
     <div class="encrow"><span class="lbl">Datos de aplicación</span><span class="eth">Ethernet</span><span class="ip">IP</span><span class="udp">UDP / TCP</span><span class="rarp" style="background:#94a3b8">Datos</span></div>
   </div>
@@ -998,17 +1096,229 @@ const SUMMARY = `
   <details><summary>6. ¿Cómo funciona traceroute?</summary><p>Envía sondas con TTL 1, 2, 3… Cada router donde el TTL llega a 0 descarta la sonda y responde ICMP Time Exceeded, con lo que se conoce su IP. Cuando una sonda llega al destino, éste responde (por ejemplo, Echo Reply) y termina.</p></details>
   <details><summary>7. ¿Qué es un ARP gratuito y para qué sirve?</summary><p>Una solicitud ARP donde IP emisor = IP objetivo, difundida sin esperar respuesta. Actualiza cachés ajenas tras un cambio de MAC o un failover, y si alguien contesta revela una IP duplicada.</p></details>
   <details><summary>8. ¿Qué ocurre si un host miente en sus respuestas ARP?</summary><p>ARP no tiene autenticación: cualquiera puede contestar o enviar respuestas no solicitadas, y los demás actualizan su caché (<i>ARP spoofing</i>), lo que permite desviar tráfico (hombre en el medio). Se mitiga con entradas estáticas, inspección dinámica de ARP en los switches, etc.</p></details>
-  <details><summary>9. Si A hace ping a D, ¿por qué el Echo Reply normalmente no genera mensajes ARP?</summary><p>Porque cada solicitud ARP del camino de ida enseñó la MAC del que preguntó al que respondió (A a R1, R1 a R2, R2 a D). Al volver, cada equipo ya tiene en su caché a quién entregar la trama.</p></details>
+  <details><summary>9. ¿Qué diferencias hay entre BOOTP y DHCP?</summary><p>Comparten formato de mensaje y puertos (UDP 67/68). BOOTP intercambia dos mensajes y asigna de forma estática, según una tabla MAC → IP armada a mano, sin concesión. DHCP agrega asignación dinámica con <i>lease</i>, el intercambio de cuatro mensajes, renovación y muchas más opciones.</p></details>
+  <details><summary>10. Si A hace ping a D, ¿por qué el Echo Reply normalmente no genera mensajes ARP?</summary><p>Porque cada solicitud ARP del camino de ida enseñó la MAC del que preguntó al que respondió (A a R1, R1 a R2, R2 a D). Al volver, cada equipo ya tiene en su caché a quién entregar la trama.</p></details>
 </div>
 
 <div class="card">
   <h2>Bibliografía</h2>
   <ul style="margin:0;padding-left:20px">
     <li>A. S. Tanenbaum y D. J. Wetherall, <i>Redes de computadoras</i>, capítulo 5 (La capa de red): protocolos de control de Internet (ICMP, ARP y DHCP) y direccionamiento IP. Para la capa de enlace y Ethernet, capítulos 3 y 4.</li>
-    <li>RFC 826 (ARP), RFC 903 (RARP), RFC 792 (ICMP), RFC 2131 (DHCP), RFC 5227 (detección de direcciones IPv4 duplicadas).</li>
+    <li>RFC 826 (ARP), RFC 903 (RARP), RFC 951 (BOOTP), RFC 792 (ICMP), RFC 2131 (DHCP), RFC 5227 (detección de direcciones IPv4 duplicadas).</li>
   </ul>
   <p class="muted small" style="margin-bottom:0">Las direcciones, MAC y tablas de este simulador son ficticias y simplificadas con fines didácticos (las MAC comienzan con 02, el bit de «administración local»).</p>
 </div>`;
+
+/* =====================================================================
+   6. EXAMEN
+   ===================================================================== */
+const TOPICS = { route:'Ruteo y MAC por salto', arp:'ARP', rarp:'RARP', bootp:'BOOTP', dhcp:'DHCP', icmp:'ICMP' };
+const rnd = n => Math.floor(Math.random() * n);
+const pick = a => a[rnd(a.length)];
+const uniq = a => [...new Set(a)];
+const ORD = ['primera', 'segunda', 'tercera', 'cuarta', 'quinta'];
+const hostsAll = ['A', 'B', 'S', 'C', 'D'];
+const ipOf = id => BASE.nodes[id].ifs[0].ip;
+const lanOf = id => BASE.nodes[id].ifs[0].lan;
+const freshSim = () => mkSim(clone(BASE));
+const mkQ = (t, q, right, wrong, why) => { const opts = shuffle([right, ...wrong], rnd(1e9)); return { t, q, opts, a:opts.indexOf(right), why }; };
+function numQ(t, q, right, why, extra = []) {
+  const c = shuffle(uniq([right - 2, right - 1, right + 1, right + 2, right + 3, ...extra]).filter(x => x !== right && x >= 0), rnd(1e9)).slice(0, 3);
+  return mkQ(t, q, String(right), c.map(String), why);
+}
+const crossPair = () => { let s, d; do { s = pick(hostsAll); d = pick(hostsAll); } while (s === d || lanOf(s) === lanOf(d)); return [s, d]; };
+const echoReq = (s, dstIp, ttl) => ({ src:ipOf(s), dst:dstIp, ttl, proto:1, kind:'icmp', tok:'ICMP', name:'Echo Request', l4:() => icmpL(8, 0) });
+
+/* ----- preguntas generadas con el motor de la simulación ----- */
+const DYN = [
+  { t:'route', g() {
+    const [s, d] = crossPair(), sim = freshSim();
+    sendIP(sim, s, udpPkt(ipOf(s), ipOf(d), 64));
+    const hops = sim.steps.filter(x => x.hop), k = rnd(hops.length), h = hops[k].hop, dmac = BASE.nodes[d].ifs[0].mac;
+    const all = []; IDS.forEach(id => BASE.nodes[id].ifs.forEach(f => all.push(f.mac)));
+    const rest = shuffle(uniq([BCAST, ...all]).filter(m => m !== h.dmac && m !== dmac), rnd(1e9));
+    const wrong = [dmac !== h.dmac ? dmac : null, ...rest].filter(Boolean).slice(0, 3);
+    return mkQ('route', `<b>${s}</b> (<code>${ipOf(s)}</code>) envía un datagrama a <b>${d}</b> (<code>${ipOf(d)}</code>) con las cachés ARP vacías. ¿Cuál es la <b>MAC destino</b> de la <b>${ORD[k]}</b> trama que transporta el datagrama (sin contar los mensajes ARP)? <span class="muted">Usá las direcciones de referencia.</span>`,
+      h.dmac, wrong, `El salto ${k + 1} va de <b>${h.from}</b> a <b>${h.to}</b> en la ${h.lan}: la MAC destino es la de ${h.to} (<code>${h.dmac}</code>). La MAC se reescribe en cada red; sólo en el último salto coincide con la del destino final.`);
+  } },
+  { t:'arp', g() {
+    const [s, d] = crossPair(), sim = freshSim();
+    sendIP(sim, s, udpPkt(ipOf(s), ipOf(d), 64));
+    const n = sim.steps.filter(x => x.kind === 'arp' && x.type === 'tx').length, hops = sim.steps.filter(x => x.hop).length;
+    return numQ('arp', `<b>${s}</b> envía un único datagrama a <b>${d}</b> (<code>${ipOf(d)}</code>) y todas las cachés ARP están vacías. ¿Cuántos <b>mensajes ARP</b> (solicitudes y respuestas) se intercambian en total?`, n,
+      `Hay ${hops} saltos y cada uno necesita resolver una MAC distinta: ${hops} solicitudes (difusión) + ${hops} respuestas (unicast) = <b>${n}</b> mensajes.`, [hops]);
+  } },
+  { t:'route', g() {
+    const [s, d] = crossPair(), sim = freshSim(), t = pick([32, 64, 128, 255]);
+    const r = sendIP(sim, s, udpPkt(ipOf(s), ipOf(d), t));
+    return numQ('route', `<b>${s}</b> envía un datagrama a <b>${d}</b> con TTL inicial <b>${t}</b>. ¿Con qué TTL llega a destino?`, r.ttl,
+      `El datagrama atraviesa 2 routers y cada uno resta 1 al TTL: ${t} − 2 = <b>${r.ttl}</b>. Los hosts no modifican el TTL.`, [t]);
+  } },
+  { t:'route', g() {
+    const p = pick([24, 25, 26, 27]), size = 2 ** (32 - p), net = 192 * 16777216 + 168 * 65536 + pick([1, 10, 20, 30]) * 256;
+    const host = n2ip(net + 2 + rnd(size - 4)), gw = n2ip(net + 1), inside = Math.random() < .5;
+    let dst; if (inside) { do { dst = n2ip(net + 1 + rnd(size - 2)); } while (dst === host || dst === gw); } else dst = n2ip(net + size + 2 + rnd(size - 4));
+    const bc = n2ip(net + size - 1), none = 'Ninguna: envía la trama por difusión sin ARP', mask = n2ip(maskN(p));
+    const right = inside ? dst : gw, wrong = inside ? [gw, bc, none] : [dst, bc, none];
+    return mkQ('route', `Un host tiene la IP <code>${host}</code>, máscara <code>${mask}</code> (/${p}) y gateway <code>${gw}</code>. Quiere enviar un datagrama a <code>${dst}</code>. ¿Para qué IP hace la consulta ARP?`, right, wrong,
+      `<code>${dst} AND ${mask} = ${netOf(dst, p)}</code> y <code>${host} AND ${mask} = ${netOf(host, p)}</code>. ${inside ? 'Coinciden: el destino es local, se resuelve la IP del destino.' : 'No coinciden: el destino es remoto, se resuelve la IP del gateway y la trama se le entrega al router.'}`);
+  } },
+  { t:'icmp', g() {
+    const [s, d] = crossPair(), t = 1 + rnd(2), sim = freshSim(), r = sendIP(sim, s, echoReq(s, ipOf(d), t));
+    const ips = ['192.168.1.1', '10.0.0.1', '10.0.0.2', '172.16.0.1'];
+    const wrong = shuffle(uniq([...ips, ipOf(d)]).filter(x => x !== r.byIp), rnd(1e9)).slice(0, 3);
+    return mkQ('icmp', `Con <i>traceroute</i> (sondas ICMP Echo Request) desde <b>${s}</b> hacia <b>${d}</b>, ¿qué dirección IP origen trae la respuesta a la sonda con <b>TTL = ${t}</b>? <span class="muted">Usá las direcciones de referencia.</span>`, r.byIp, wrong,
+      `La sonda con TTL ${t} muere en <b>${r.by}</b>, que contesta ICMP Time Exceeded usando como IP origen la de la <b>interfaz por la que entró</b> la sonda: <code>${r.byIp}</code>.`);
+  } },
+  { t:'icmp', g() {
+    const cases = [{ dst:'172.16.0.99', ttl:64, from:['A', 'B', 'S'] }, { dst:'8.8.8.8', ttl:64, from:hostsAll }, { dst:ipOf('D'), ttl:pick([1, 2]), from:['A', 'B', 'S'] }, { dst:ipOf('D'), ttl:64, from:['A', 'B', 'S'] }];
+    const c = pick(cases), s = pick(c.from), sim = freshSim(), r = sendIP(sim, s, echoReq(s, c.dst, c.ttl));
+    const O = { ok:'Echo Reply (tipo 0)', ttl:'Time Exceeded (tipo 11, código 0)', noroute:'Destination Unreachable: red (tipo 3, código 0)', arp:'Destination Unreachable: host (tipo 3, código 1)' };
+    const key = r.delivered ? 'ok' : r.reason, why = {
+      ok:'El destino existe y es alcanzable: contesta con un Echo Reply.',
+      ttl:`El TTL se agota en <b>${r.by}</b>, que descarta la sonda y avisa con Time Exceeded.`,
+      noroute:`<b>${r.by}</b> no tiene ninguna ruta hacia esa red (no hay ruta por defecto) y avisa con Destination Unreachable (red).`,
+      arp:`El último router (<b>${r.by}</b>) no logra resolver por ARP la MAC del destino y avisa con Destination Unreachable (host, código 1).` }[key];
+    return mkQ('icmp', `<b>${s}</b> ejecuta <code>ping ${c.dst}</code> con TTL inicial <b>${c.ttl}</b>. En la red de práctica ningún router tiene ruta por defecto. ¿Qué mensaje ICMP recibe <b>${s}</b>?`, O[key], Object.entries(O).filter(([k]) => k !== key).map(([, v]) => v), why);
+  } },
+  { t:'arp', g() {
+    const [s, d] = crossPair(), x = pick(IDS), sim = freshSim();
+    sendIP(sim, s, udpPkt(ipOf(s), ipOf(d), 64));
+    const ents = Object.entries(sim.W.nodes[x].arp);
+    return numQ('arp', `Las cachés ARP estaban vacías y <b>${s}</b> envía un datagrama a <b>${d}</b> (una sola vez, sin respuesta). Al terminar, ¿cuántas entradas tiene la caché ARP de <b>${x}</b>?`, ents.length,
+      ents.length ? `Cada solicitud ARP enseña la MAC del que pregunta sólo al que contesta, y cada respuesta enseña la del que contesta al que preguntó. Entradas de ${x}: ${ents.map(([ip]) => `<code>${ip}</code>`).join(', ')}.`
+        : `<b>${x}</b> no participó: oyó (o no) las difusiones ARP pero las ignoró. Un host sólo agrega una entrada cuando es el destino de la solicitud o cuando recibe la respuesta a su propia consulta.`, [0, 1, 2]);
+  } }
+];
+
+/* ----- banco de preguntas estáticas ----- */
+const BANK = () => [
+  mkQ('arp', '¿Cómo se envía una solicitud ARP en una red Ethernet?', 'En una trama de difusión (MAC destino FF:FF:FF:FF:FF:FF)', ['En una trama unicast dirigida al router por defecto', 'En un datagrama IP multicast al grupo 224.0.0.1', 'En un datagrama UDP al puerto 53'], 'Se ignora justamente la MAC del destinatario, así que la pregunta se difunde. La respuesta sí es unicast.'),
+  mkQ('arp', 'Los mensajes ARP viajan encapsulados…', 'Directamente en la trama Ethernet (EtherType 0x0806)', ['En datagramas IP con protocolo 1', 'En segmentos UDP al puerto 67', 'En segmentos TCP'], 'ARP es un protocolo de enlace: no usa cabecera IP. Por eso funciona aun sin dirección IP propia.'),
+  mkQ('arp', '¿Por qué ARP sólo resuelve direcciones de la red local?', 'Porque se difunde en la capa de enlace y los routers no reenvían difusiones', ['Porque las MAC fuera de la LAN no existen', 'Porque ARP usa TTL = 1', 'Porque los switches descartan todo ARP'], 'Para un destino remoto el host resuelve la MAC de su gateway; cada router resuelve la del siguiente salto.'),
+  mkQ('arp', '¿Qué es un ARP gratuito?', 'Una solicitud con IP emisor = IP objetivo, difundida para anunciar o actualizar la propia asociación IP–MAC', ['Una respuesta ARP enviada por un router por proxy', 'Una solicitud ARP que no se difunde', 'Un ARP que atraviesa los routers'], 'Sirve para refrescar cachés ajenas tras un cambio de MAC y para detectar IP duplicadas (si alguien contesta).'),
+  mkQ('arp', 'Un host quiere enviar a una IP de otra red. ¿La MAC de quién resuelve con ARP?', 'La del router por defecto (gateway)', ['La del host destino', 'La del servidor DNS', 'FF:FF:FF:FF:FF:FF'], 'La MAC sólo sirve dentro de la red local; el paquete se entrega al gateway, que lo reenvía.'),
+  mkQ('arp', 'En una solicitud ARP, ¿qué valor tiene el campo THA (MAC objetivo)?', 'Ceros: es justo lo que se quiere averiguar', ['La MAC de difusión', 'La MAC del emisor', 'La MAC del router'], 'THA se completa en la respuesta con la MAC de quien contesta.'),
+  mkQ('arp', 'En el proxy ARP, ¿con qué MAC responde el router?', 'Con la suya propia', ['Con la del host remoto', 'Con FF:FF:FF:FF:FF:FF', 'No responde nunca'], 'Así el host le entrega a él las tramas, y el router las reenvía hacia el destino real.'),
+  mkQ('arp', '¿Qué ventaja ofrece la caché ARP?', 'Evita difundir una solicitud por cada trama; sus entradas caducan para tolerar cambios', ['Permite que ARP cruce routers', 'Reemplaza a la tabla de rutas', 'Evita la necesidad de direcciones MAC'], 'Sin caché habría una difusión por cada datagrama enviado.'),
+
+  mkQ('rarp', '¿Qué pregunta formula una estación con RARP?', 'Conozco mi MAC: ¿cuál es mi IP?', ['Conozco la IP de otro host: ¿cuál es su MAC?', '¿Cuál es el nombre de dominio de mi IP?', '¿Cuál es la IP de mi gateway?'], 'RARP es el inverso de ARP.'),
+  mkQ('rarp', '¿Cuál es la principal limitación de RARP frente a BOOTP y DHCP?', 'La difusión no cruza routers: hace falta un servidor RARP en cada red', ['Sólo funciona con IPv6', 'Usa TCP, que es lento', 'No puede devolver ninguna IP'], 'Al no usar IP/UDP, tampoco admite agentes de retransmisión.'),
+  mkQ('rarp', 'Además de la IP, ¿qué entrega un servidor RARP?', 'Nada más: no entrega máscara, gateway ni DNS', ['Máscara y gateway', 'Sólo la máscara', 'Un tiempo de concesión'], 'Por eso con RARP el cliente no puede comunicarse con otras redes sin configuración adicional.'),
+  mkQ('rarp', '¿Cómo se encapsula RARP?', 'Directamente sobre Ethernet (EtherType 0x8035), sin IP', ['Dentro de IP, EtherType 0x0800', 'En UDP puerto 67', 'En ICMP'], 'Igual que ARP, comparte el formato de mensaje y se difunde en la capa de enlace.'),
+
+  mkQ('bootp', '¿Sobre qué transporte funciona BOOTP?', 'UDP/IP: puerto 67 (servidor) y 68 (cliente)', ['Directamente sobre Ethernet, como RARP', 'TCP puerto 80', 'ICMP'], 'Ir sobre UDP/IP permite usar agentes de retransmisión.'),
+  mkQ('bootp', '¿Qué ventaja tiene BOOTP sobre RARP?', 'Viaja en UDP/IP (puede cruzar routers con un relay) y entrega más datos: máscara, router, servidor y archivo de arranque', ['No necesita servidor', 'Asigna direcciones dinámicamente con concesión', 'Usa sólo difusión de capa 2'], 'Esos dos puntos resuelven las limitaciones principales de RARP.'),
+  mkQ('bootp', '¿Cómo asigna direcciones BOOTP?', 'De forma estática: tabla MAC → IP configurada por el administrador, sin concesión', ['Dinámicamente, con una concesión de 24 h', 'Eligiendo al azar de un pool', 'El cliente elige y comprueba con ARP'], 'La asignación dinámica con lease es justamente la novedad de DHCP.'),
+  mkQ('bootp', '¿Cuántos mensajes intercambia un cliente BOOTP para configurarse?', 'Dos: BOOTREQUEST y BOOTREPLY', ['Cuatro: Discover, Offer, Request y Ack', 'Uno solo', 'Tres'], 'DHCP necesita cuatro por la negociación entre varios servidores y la confirmación.'),
+  mkQ('bootp', '¿Qué campos de BOOTP le dicen al cliente de dónde descargar su imagen de arranque?', 'siaddr (IP del servidor) y file (nombre del archivo)', ['giaddr y xid', 'chaddr y ciaddr', 'yiaddr y vend'], 'Luego el cliente la baja típicamente por TFTP (UDP 69).'),
+  mkQ('bootp', '¿Qué campo completa un agente de retransmisión (relay) al reenviar un pedido?', 'giaddr, con la IP de la interfaz por la que llegó la difusión', ['chaddr', 'yiaddr', 'xid'], 'Con giaddr el servidor sabe en qué red está el cliente y a quién devolver la respuesta.'),
+  mkQ('bootp', '¿Qué relación hay entre DHCP y BOOTP?', 'DHCP reutiliza el formato de mensaje de BOOTP y agrega asignación dinámica con concesión y más opciones', ['DHCP usa puertos distintos (53 y 54) y es incompatible', 'BOOTP es la versión moderna de DHCP', 'DHCP reemplaza a ARP'], 'Por eso comparten los puertos 67 y 68.'),
+
+  mkQ('dhcp', '¿Cuál es el orden correcto del intercambio DHCP?', 'DISCOVER, OFFER, REQUEST, ACK', ['OFFER, DISCOVER, ACK, REQUEST', 'REQUEST, OFFER, DISCOVER, ACK', 'DISCOVER, REQUEST, OFFER, ACK'], 'Se recuerda como DORA.'),
+  mkQ('dhcp', '¿Qué direcciones IP lleva el DHCPDISCOVER?', 'Origen 0.0.0.0, destino 255.255.255.255', ['Origen 192.168.1.1, destino la IP del servidor', 'Origen 0.0.0.0, destino 224.0.0.1', 'Origen 255.255.255.255, destino 0.0.0.0'], 'El cliente aún no tiene IP ni conoce al servidor: difusión limitada.'),
+  mkQ('dhcp', '¿Qué puertos UDP usa DHCP?', 'Servidor 67, cliente 68', ['Servidor 68, cliente 67', 'Servidor 53, cliente 54', 'Ambos 69'], 'Son los mismos que usa BOOTP.'),
+  mkQ('dhcp', '¿Por qué el cliente difunde el DHCPREQUEST aunque ya eligió un servidor?', 'Para que los demás servidores sepan que su oferta fue rechazada y liberen la dirección', ['Porque todavía no conoce ningún servidor', 'Porque ARP no está disponible', 'Porque el REQUEST siempre es multicast'], 'El identificador del servidor elegido va en la opción 54.'),
+  mkQ('dhcp', 'Cuando transcurre T1 (50 % de la concesión), ¿qué hace el cliente?', 'Intenta renovar por unicast con el servidor que le dio la IP', ['Libera la dirección inmediatamente', 'Difunde un nuevo DISCOVER', 'Espera a que el servidor la renueve solo'], 'Si no lo logra, a T2 (87,5 %) lo intenta por difusión con cualquier servidor.'),
+  mkQ('dhcp', '¿Qué hace un agente de retransmisión (relay) DHCP?', 'Reenvía por unicast al servidor las difusiones del cliente, completando giaddr', ['Asigna direcciones en lugar del servidor', 'Traduce direcciones (NAT)', 'Reenvía mensajes ARP entre redes'], 'Permite un único servidor para muchas redes.'),
+  mkQ('dhcp', '¿Cuál es la principal ventaja de DHCP sobre BOOTP?', 'Asignación dinámica con concesión (lease) y reutilización de direcciones', ['Usa TCP en lugar de UDP', 'Funciona sin servidor', 'No necesita difusión'], 'BOOTP asigna siempre la misma IP a cada MAC registrada.'),
+
+  mkQ('icmp', '¿Cómo se encapsula ICMP?', 'En un datagrama IP, campo protocolo = 1', ['Directamente en Ethernet', 'En UDP puerto 7', 'En TCP'], 'Aunque es de la capa de red, sus mensajes viajan dentro de IP.'),
+  mkQ('icmp', '¿Qué mensaje envía un router cuando el TTL de un datagrama llega a 0?', 'Time Exceeded (tipo 11, código 0)', ['Destination Unreachable (tipo 3)', 'Redirect (tipo 5)', 'Echo Reply (tipo 0)'], 'Además descarta el datagrama.'),
+  mkQ('icmp', '¿Cómo funciona traceroute?', 'Envía sondas con TTL creciente y registra los Time Exceeded de cada router', ['Consulta por SNMP la tabla de rutas de cada router', 'Usa ARP para listar los routers', 'Envía una sola sonda con TTL = 255'], 'Cuando una sonda llega al destino, éste responde y termina.'),
+  mkQ('icmp', '¿Se genera un mensaje ICMP de error en respuesta a otro mensaje ICMP de error?', 'No: se evita para no provocar tormentas de mensajes', ['Sí, siempre', 'Sólo si el TTL es 0', 'Sólo si es un Echo Request'], 'Esta regla evita bucles de errores.'),
+  mkQ('icmp', '¿Qué tipos ICMP corresponden a Echo Request y Echo Reply?', 'Request = 8, Reply = 0', ['Request = 0, Reply = 8', 'Request = 3, Reply = 11', 'Request = 5, Reply = 0'], 'Son la base de la herramienta ping.'),
+  mkQ('icmp', '¿Qué indica Destination Unreachable con código 1?', 'Host inalcanzable (p. ej., el router no pudo resolver su MAC con ARP)', ['Red inalcanzable', 'Puerto inalcanzable', 'Fragmentación necesaria'], 'Código 0 = red, 1 = host, 3 = puerto, 4 = fragmentación necesaria con DF.'),
+  mkQ('icmp', '¿Qué parte del datagrama original incluye un ICMP de error?', 'Su cabecera IP y los primeros 8 bytes de datos', ['Sólo la IP origen', 'El datagrama completo, siempre', 'Nada'], 'Así el origen puede identificar la conexión afectada.'),
+
+  mkQ('route', 'Al cruzar un router, ¿qué NO cambia en el datagrama ni en su trama?', 'La IP origen y la IP destino', ['La MAC origen', 'La MAC destino', 'El TTL'], 'Las IP son de extremo a extremo; las MAC se reescriben en cada red.'),
+  mkQ('route', '¿Qué hace un router con el TTL?', 'Lo decrementa en 1 y descarta el datagrama si llega a 0', ['Lo reinicia a 64', 'Lo incrementa', 'No lo toca'], 'Evita que los datagramas circulen eternamente en bucles.'),
+  mkQ('route', '¿Cómo decide un host si el destino está en su misma red?', 'Aplica su máscara a su IP y a la del destino y compara los resultados', ['Hace un ping previo', 'Consulta al DNS', 'Compara las direcciones MAC'], 'Si las redes coinciden, el destino es local.'),
+  mkQ('route', 'El último router del camino (destino en una red conectada directamente) hace ARP por…', 'La IP del destino final', ['La IP del router anterior', 'La IP del gateway del destino', '255.255.255.255'], 'Ya no hay otro salto: la trama se entrega directamente al host.'),
+  mkQ('route', 'Si varias rutas de la tabla coinciden con el destino, el router usa…', 'La más específica (prefijo más largo)', ['La primera de la tabla', 'La de menor número de interfaz', 'La de prefijo más corto'], 'Es la regla de coincidencia de prefijo más largo.')
+];
+
+/* ----- estado e interfaz ----- */
+const E = { phase:'setup', topics:{ route:true, arp:true, rarp:true, bootp:true, dhcp:true, icmp:true }, n:10, mode:'estudio', qs:[], i:0, ans:[], warn:'', refOpen:false };
+const REF = (() => {
+  const rows = []; IDS.forEach(id => BASE.nodes[id].ifs.forEach(f => rows.push(`<tr><td>${id}${BASE.nodes[id].kind === 'router' ? '.' + f.n : ''}</td><td class="m">${f.ip}/${f.p}</td><td class="m">${f.mac}</td></tr>`)));
+  return `<p style="margin-top:0">LAN 1 <code>192.168.1.0/24</code>: A, B, S y R1.e0 · LAN 2 <code>10.0.0.0/24</code>: R1.e1 y R2.e0 · LAN 3 <code>172.16.0.0/24</code>: R2.e1, C y D. Gateway de A, B y S: R1.e0; de C y D: R2.e1. R1 llega a la LAN 3 vía 10.0.0.2 y R2 a la LAN 1 vía 10.0.0.1. Ningún router tiene ruta por defecto.</p><table class="mini"><tr><th>Interfaz</th><th>IP</th><th>MAC</th></tr>${rows.join('')}</table>`;
+})();
+function buildExam(topics, n) {
+  const stat = shuffle(BANK().filter(q => topics.includes(q.t)), rnd(1e9)), dyn = DYN.filter(d => topics.includes(d.t)), qs = [], seen = new Set();
+  const want = dyn.length ? Math.min(Math.ceil(n / 3), n) : 0;
+  const addDyn = lim => { for (let i = 0; i < 60 && qs.length < lim; i++) { const q = pick(dyn).g(); if (!seen.has(q.q)) { seen.add(q.q); qs.push(q); } } };
+  addDyn(want);
+  stat.slice(0, n - qs.length).forEach(q => qs.push(q));
+  if (dyn.length) addDyn(n);
+  return shuffle(qs, rnd(1e9)).slice(0, n);
+}
+function startExam(qs) { E.qs = qs; E.i = 0; E.ans = qs.map(() => null); E.phase = 'run'; E.warn = ''; renderExam(); }
+function examScore() {
+  let ok = 0; const by = {};
+  E.qs.forEach((q, i) => { const r = E.ans[i] === q.a; by[q.t] = by[q.t] || [0, 0]; by[q.t][1]++; if (r) { ok++; by[q.t][0]++; } });
+  return { ok, n:E.qs.length, by };
+}
+function renderExam() {
+  const el = $('#view-exam');
+  if (E.phase === 'setup') {
+    el.innerHTML = `<div class="card"><h2>Examen</h2><p class="muted" style="max-width:68ch;margin:0">Preguntas de opción múltiple sobre los temas del simulador. Algunas se generan en el momento con la propia red de práctica (por ejemplo, calcular la MAC destino de un salto), así que cada examen es distinto.</p>
+      <h3>Temas</h3><div class="chips" style="margin-top:0">${Object.entries(TOPICS).map(([k, v]) => `<label class="chip tchk"><input type="checkbox" data-topic="${k}" ${E.topics[k] ? 'checked' : ''}> ${v}</label>`).join('')}</div>
+      <h3>Cantidad de preguntas</h3><select id="x-n">${[5, 10, 15, 20].map(n => `<option value="${n}" ${E.n === n ? 'selected' : ''}>${n}</option>`).join('')}</select>
+      <h3>Modo</h3>
+      <label class="radio"><input type="radio" name="xm" value="estudio" ${E.mode === 'estudio' ? 'checked' : ''}> <span><b>Estudio</b> · se corrige cada pregunta apenas respondés y ves la explicación</span></label>
+      <label class="radio"><input type="radio" name="xm" value="examen" ${E.mode === 'examen' ? 'checked' : ''}> <span><b>Examen</b> · podés ir y volver; la corrección aparece al final</span></label>
+      ${E.warn ? `<p style="color:var(--danger);margin:14px 0 0">${E.warn}</p>` : ''}
+      <div style="margin-top:22px"><button class="btn" data-x="start">Comenzar</button></div></div>`;
+    return;
+  }
+  if (E.phase === 'run') {
+    const q = E.qs[E.i], a = E.ans[E.i], study = E.mode === 'estudio', locked = study && a != null, n = E.qs.length, last = E.i === n - 1;
+    const answered = E.ans.filter(x => x != null).length;
+    el.innerHTML = `<div class="card">
+      <div class="xhead"><span class="tag ${q.t === 'rarp' ? 'rarp' : q.t === 'icmp' ? 'icmp' : q.t === 'arp' ? 'arp' : q.t === 'route' ? 'ip' : 'dhcp'}">${TOPICS[q.t]}</span><span class="muted small">Pregunta ${E.i + 1} de ${n} · ${study ? 'modo estudio' : `respondidas ${answered}/${n}`}</span></div>
+      <div class="prog"><i style="width:${(E.i + (locked || (!study && a != null) ? 1 : 0)) / n * 100}%"></i></div>
+      <details class="quiet" id="x-ref" ${E.refOpen ? 'open' : ''}><summary>Red y direcciones de referencia</summary><div class="inner">${REF}</div></details>
+      <div class="xq">${q.q}</div>
+      <div class="xopts">${q.opts.map((o, k) => `<button class="xopt ${locked ? (k === q.a ? 'right' : k === a ? 'wrong' : '') : (k === a ? 'sel' : '')}" data-o="${k}" ${locked ? 'disabled' : ''}><span class="xl">${'ABCD'[k]}</span><span>${esc(o)}</span></button>`).join('')}</div>
+      ${locked ? `<div class="fb ${a === q.a ? 'ok' : 'bad'}"><b>${a === q.a ? '✔ Correcto.' : '✘ Incorrecto.'}</b> ${q.why}</div>` : ''}
+      ${E.warn ? `<p style="color:var(--danger);margin:12px 0 0">${E.warn}</p>` : ''}
+      <div class="xnav"><button class="btn secondary" data-x="prev" ${E.i === 0 ? 'disabled' : ''}>← Anterior</button>
+        ${last ? `<button class="btn" data-x="finish">Finalizar y corregir</button>` : `<button class="btn" data-x="next">Siguiente →</button>`}</div>
+    </div>`;
+    return;
+  }
+  const sc = examScore(), pct = Math.round(sc.ok / sc.n * 100), nota = (sc.ok / sc.n * 10).toFixed(1).replace('.', ','), blank = E.ans.filter(x => x == null).length, wrongN = sc.n - sc.ok;
+  el.innerHTML = `<div class="card"><h2>Resultado</h2>
+    <div class="big"><span>${nota}</span><small>/ 10</small></div>
+    <p class="muted" style="margin:0">${sc.ok} de ${sc.n} correctas (${pct} %)${blank ? ` · ${blank} sin responder (cuentan como incorrectas)` : ''}</p>
+    <h3>Por tema</h3>
+    ${Object.entries(sc.by).map(([t, [o, tot]]) => `<div class="trow"><span>${TOPICS[t]}</span><div class="prog"><i style="width:${o / tot * 100}%"></i></div><span class="mono">${o}/${tot}</span></div>`).join('')}
+    <div class="xnav" style="margin-top:22px"><button class="btn secondary" data-x="again">Nuevo examen</button><button class="btn" data-x="redo" ${wrongN ? '' : 'disabled'}>Repasar las ${wrongN} erradas</button></div></div>
+    <div class="card" style="margin-top:16px"><h2>Revisión</h2>${E.qs.map((q, i) => { const a = E.ans[i], ok = a === q.a;
+      return `<details class="rev ${ok ? 'ok' : 'bad'}"><summary><span class="mk">${ok ? '✔' : '✘'}</span><span>${i + 1}. ${q.q.replace(/<span class="muted">.*?<\/span>/, '')}</span></summary>
+        <p style="margin:8px 0 0"><span class="muted">Tu respuesta:</span> ${a == null ? '<i>sin responder</i>' : esc(q.opts[a])}</p><p style="margin:2px 0"><span class="muted">Correcta:</span> <b>${esc(q.opts[q.a])}</b></p><p style="margin:6px 0 0">${q.why}</p></details>`; }).join('')}</div>`;
+}
+$('#view-exam').addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.topic) E.topics[t.dataset.topic] = t.checked; else if (t.id === 'x-n') E.n = +t.value; else if (t.name === 'xm') E.mode = t.value;
+});
+$('#view-exam').addEventListener('toggle', e => { if (e.target.id === 'x-ref') E.refOpen = e.target.open; }, true);
+$('#view-exam').addEventListener('click', e => {
+  const o = e.target.closest('[data-o]');
+  if (o) { if (E.mode === 'estudio' && E.ans[E.i] != null) return; E.ans[E.i] = +o.dataset.o; E.warn = ''; renderExam(); return; }
+  const b = e.target.closest('[data-x]'); if (!b) return;
+  const act = b.dataset.x;
+  if (act === 'start') {
+    const sel = Object.keys(E.topics).filter(k => E.topics[k]);
+    if (!sel.length) { E.warn = 'Elegí al menos un tema.'; renderExam(); return; }
+    startExam(buildExam(sel, E.n));
+  } else if (act === 'prev') { E.i = Math.max(0, E.i - 1); E.warn = ''; renderExam(); }
+  else if (act === 'next') { E.i = Math.min(E.qs.length - 1, E.i + 1); E.warn = ''; renderExam(); }
+  else if (act === 'finish') { E.phase = 'result'; renderExam(); window.scrollTo(0, 0); }
+  else if (act === 'again') { E.phase = 'setup'; E.warn = ''; renderExam(); }
+  else if (act === 'redo') { const w = E.qs.filter((q, i) => E.ans[i] !== q.a); E.mode = 'estudio'; startExam(w); }
+});
 
 /* ===== arranque ===== */
 buildTopo();
