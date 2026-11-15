@@ -21,6 +21,8 @@
   .wrap, .container { max-width:1040px; margin:0 auto; padding:0 24px; }
   .top h1 { margin:0; font-size:clamp(22px,3vw,28px); font-weight:650; letter-spacing:-.03em; }
   .top p { margin:4px 0 0; color:var(--muted); }
+  .back { display:inline-block; margin-bottom:10px; font-size:13px; font-weight:600; color:var(--muted); text-decoration:none; }
+  .back:hover { color:var(--accent); }
   .container { padding-bottom:60px; }
   .tabs { display:flex; gap:22px; margin:22px 0 26px; border-bottom:1px solid var(--line); overflow-x:auto; overflow-y:hidden; white-space:nowrap; scrollbar-width:none; }
   .tabs::-webkit-scrollbar { display:none; }
@@ -181,6 +183,7 @@
 <body>
 <header class="top">
   <div class="wrap">
+    <a class="back" href="index.html">← Inicio</a>
     <h1>Protocolos complementarios a IP</h1>
     <p>ARP, RARP, BOOTP, DHCP e ICMP: cómo un paquete encuentra su camino, trama a trama.</p>
   </div>
