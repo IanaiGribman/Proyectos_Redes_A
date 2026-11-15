@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redes · Ejercicios y simuladores</title>
+<style>
+  :root { --bg:#fafafb; --text:#1f2430; --muted:#868d9c; --line:#e3e6ee; --accent:#3b5bdb; }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.6 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing:antialiased; }
+  #bg { position:fixed; inset:0; width:100%; height:100%; z-index:0; display:block; }
+  main { position:relative; z-index:1; min-height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:48px 20px; }
+  header { text-align:center; margin-bottom:26px; }
+  h1 { margin:0; font-size:clamp(28px,5vw,40px); font-weight:650; letter-spacing:-.04em; }
+  header p { margin:6px 0 0; color:var(--muted); }
+  nav { width:100%; max-width:540px; display:grid; gap:10px; }
+  a.page { display:block; text-decoration:none; color:inherit; padding:15px 20px; border:1px solid var(--line); border-radius:14px; background:rgba(255,255,255,.82); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:transform .15s, border-color .15s, box-shadow .15s; }
+  a.page:hover, a.page:focus-visible { transform:translateY(-2px); border-color:#b9c4f5; box-shadow:0 8px 24px rgba(59,91,219,.10); outline:none; }
+  a.page b { display:block; font-weight:650; font-size:16px; letter-spacing:-.01em; }
+  a.page span { display:block; color:var(--muted); font-size:13.5px; margin-top:2px; }
+</style>
+</head>
+<body>
+<canvas id="bg" aria-hidden="true"></canvas>
+
+<main>
+  <header>
+    <h1>Redes</h1>
+    <p>Ejercicios y simuladores</p>
+  </header>
+
+  <!--
+    PARA AGREGAR UNA PÁGINA NUEVA: copiá uno de los bloques <a class="page"> de abajo,
+    cambiá el href (nombre del archivo), el título y la descripción. Nada más.
+  -->
+  <nav>
+    <a class="page" href="simulador_protocolos_ip.html">
+      <b>Protocolos complementarios a IP</b>
+      <span>Simulador paso a paso de ARP, RARP, BOOTP, DHCP e ICMP, con examen.</span>
+    </a>
+    <a class="page" href="examenes_parciales.html">
+      <b>Parciales de Redes</b>
+      <span>Examen en opción múltiple de teoría y práctica, con corrección al final o al responder.</span>
+    </a>
+    <a class="page" href="simulador_switches.html">
+      <b>Simulador de redes Ethernet</b>
+      <span>Armá una topología de hosts, switches y hubs, simulá tramas y mirá el aprendizaje de MAC.</span>
+    </a>
+    <a class="page" href="practica_ip.html">
+      <b>Práctica de IPv4</b>
+      <span>Examen avanzado de IPv4 con 6 preguntas.</span>
+    </a>
+  </nav>
+</main>
+
+<script>
+/* Fondo: paquetes viajando entre routers. Sólo decorativo. */
+(() => {
+  const cv = document.getElementById('bg'), ctx = cv.getContext('2d');
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const KINDS = [
+    { c:'#3b5bdb', w:5 },      // IP / datos
+    { c:'#3b5bdb', w:5 },
+    { c:'#16866f', w:5 },      // DHCP
+    { c:'#d98200', w:5 },      // ICMP
+    { c:'#7a5ad8', w:5 }       // ARP
+  ];
+  let W = 0, H = 0, dpr = 1, nodes = [], edges = [], adj = [], packets = [], rings = [], last = 0, spawnT = 0, ringT = 2;
+  const busy = new Map();                          // canal (enlace) -> paquete que lo está usando
+  const ek = (i, j) => i < j ? i + '-' + j : j + '-' + i;
+  const rand = (a, b) => a + Math.random() * (b - a);
+  const pick = a => a[Math.floor(Math.random() * a.length)];
+
+  function build() {
+    dpr = Math.min(devicePixelRatio || 1, 2);
+    W = innerWidth; H = innerHeight;
+    cv.width = W * dpr; cv.height = H * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    nodes = []; edges = []; packets = []; rings = []; busy.clear();
+    const n = Math.max(9, Math.min(30, Math.round(W * H / 52000))), minD = Math.sqrt(W * H / n) * .62;
+    for (let tries = 0; nodes.length < n && tries < 4000; tries++) {
+      const x = rand(30, W - 30), y = rand(30, H - 30);
+      if (nodes.every(p => Math.hypot(p.x - x, p.y - y) > minD)) nodes.push({ x, y, pulse:0, r:rand(5, 7) });
+    }
+    adj = nodes.map(() => []);
+    const has = new Set(), link = (i, j) => { const k = i < j ? i + '-' + j : j + '-' + i; if (i === j || has.has(k)) return; has.add(k); edges.push([i, j]); adj[i].push(j); adj[j].push(i); };
+    nodes.forEach((p, i) => {
+      const near = nodes.map((q, j) => [j, Math.hypot(p.x - q.x, p.y - q.y)]).filter(o => o[0] !== i).sort((a, b) => a[1] - b[1]);
+      near.slice(0, 2 + (Math.random() < .4 ? 1 : 0)).forEach(o => link(i, o[0]));
+    });
+  }
+
+  function route(from) {            // camino aleatorio sin retroceder, de 2 a 6 saltos
+    const hops = 2 + Math.floor(Math.random() * 5), path = [from]; let prev = -1;
+    for (let k = 0; k < hops; k++) {
+      const cur = path[path.length - 1], opts = adj[cur].filter(j => j !== prev && !path.includes(j));
+      if (!opts.length) break; prev = cur; path.push(pick(opts));
+    }
+    return path;
+  }
+  function spawn() {
+    if (!nodes.length || packets.length >= Math.max(4, Math.round(nodes.length * .3))) return;
+    const path = route(Math.floor(Math.random() * nodes.length));
+    if (path.length < 2) return;
+    const k = pick(KINDS);
+    packets.push({ path, seg:0, t:0, speed:rand(110, 190), color:k.c, hold:0 });
+  }
+  function ring(i, color) { rings.push({ x:nodes[i].x, y:nodes[i].y, r:6, color }); }
+
+  function frame(now) {
+    const dt = Math.min(.05, (now - last) / 1000 || 0); last = now;
+    ctx.clearRect(0, 0, W, H);
+    // enlaces
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(120,130,155,.22)';
+    ctx.beginPath(); edges.forEach(([i, j]) => { ctx.moveTo(nodes[i].x, nodes[i].y); ctx.lineTo(nodes[j].x, nodes[j].y); }); ctx.stroke();
+    // ondas ARP (difusión)
+    for (let k = rings.length - 1; k >= 0; k--) {
+      const g = rings[k]; g.r += 90 * dt;
+      const a = Math.max(0, 1 - g.r / 150); if (a <= 0) { rings.splice(k, 1); continue; }
+      ctx.strokeStyle = g.color; ctx.globalAlpha = a * .35; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(g.x, g.y, g.r, 0, 7); ctx.stroke(); ctx.globalAlpha = 1;
+    }
+    // paquetes
+    for (let k = packets.length - 1; k >= 0; k--) {
+      const p = packets[k];
+      if (p.hold > 0) { p.hold -= dt; }
+      else {
+        const key = ek(p.path[p.seg], p.path[p.seg + 1]);
+        if (!p.moving) { if (busy.has(key)) { /* canal ocupado: espera en el router */ } else { busy.set(key, p); p.moving = true; } }
+        if (p.moving) {
+          const a = nodes[p.path[p.seg]], b = nodes[p.path[p.seg + 1]], len = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+          p.t += p.speed * dt / len;
+          if (p.t >= 1) {                        // llegó a un router: libera el canal, lo "enciende" y sigue
+            busy.delete(key); p.moving = false; p.seg++; p.t = 0; const n = nodes[p.path[p.seg]]; n.pulse = 1; p.hold = .12;
+            if (p.seg >= p.path.length - 1) { packets.splice(k, 1); continue; }
+          }
+        }
+      }
+      const a = nodes[p.path[p.seg]], b = nodes[p.path[Math.min(p.seg + 1, p.path.length - 1)]];
+      const x = a.x + (b.x - a.x) * p.t, y = a.y + (b.y - a.y) * p.t, ang = Math.atan2(b.y - a.y, b.x - a.x);
+      // estela
+      for (let s = 1; s <= 7; s++) { const d = s * 5; ctx.globalAlpha = .28 * (1 - s / 8); ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(x - Math.cos(ang) * d, y - Math.sin(ang) * d, 2.2, 0, 7); ctx.fill(); }
+      // trama
+      ctx.globalAlpha = .95; ctx.save(); ctx.translate(x, y); ctx.rotate(ang); ctx.fillStyle = p.color; ctx.beginPath(); ctx.roundRect(-5, -3.2, 10, 6.4, 2); ctx.fill(); ctx.restore(); ctx.globalAlpha = 1;
+    }
+    // routers
+    nodes.forEach(n => {
+      n.pulse = Math.max(0, n.pulse - dt * 2.2);
+      if (n.pulse > 0) { ctx.strokeStyle = 'rgba(59,91,219,' + (n.pulse * .35) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(n.x, n.y, n.r + 4 + (1 - n.pulse) * 12, 0, 7); ctx.stroke(); }
+      ctx.fillStyle = '#fff'; ctx.strokeStyle = n.pulse > 0 ? '#3b5bdb' : '#aab2c5'; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.arc(n.x, n.y, n.r, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = n.pulse > 0 ? '#3b5bdb' : '#aab2c5'; ctx.beginPath(); ctx.arc(n.x, n.y, 1.8, 0, 7); ctx.fill();
+    });
+    spawnT -= dt; if (spawnT <= 0) { spawn(); spawnT = rand(.5, 1.1); }
+    ringT -= dt; if (ringT <= 0 && nodes.length) { ring(Math.floor(Math.random() * nodes.length), '#7a5ad8'); ringT = rand(4, 8); }
+    if (!reduce) requestAnimationFrame(frame);
+  }
+
+  function start() {
+    build();
+    if (reduce) {                                // sin movimiento: una imagen fija con algunos paquetes
+      for (let i = 0; i < 8; i++) { spawn(); const p = packets[packets.length - 1]; if (p) { p.seg = 0; p.t = Math.random(); } }
+      frame(performance.now()); return;
+    }
+    last = performance.now(); requestAnimationFrame(frame);
+  }
+  let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { if (reduce) { start(); } else build(); }, 200); });
+  start();
+})();
+</script>
+</body>
+</html>
